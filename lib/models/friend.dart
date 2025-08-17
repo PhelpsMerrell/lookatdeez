@@ -12,11 +12,24 @@ class Friend {
   });
 
   factory Friend.fromJson(Map<String, dynamic> json) {
+    // Handle different possible field names from the API (backend uses PascalCase)
+    final id = json['Id'] ?? json['id'] ?? '';
+    final displayName = json['DisplayName'] ?? json['displayName'] ?? '';
+    final email = json['Email'] ?? json['email'] ?? '';
+    final friendsSinceStr = json['FriendsSince'] ?? json['friendsSince'] ?? '';
+    
+    DateTime friendsSince;
+    if (friendsSinceStr.isNotEmpty) {
+      friendsSince = DateTime.tryParse(friendsSinceStr) ?? DateTime.now();
+    } else {
+      friendsSince = DateTime.now();
+    }
+    
     return Friend(
-      id: json['id'] ?? '',
-      displayName: json['displayName'] ?? '',
-      email: json['email'] ?? '',
-      friendsSince: DateTime.tryParse(json['friendsSince'] ?? '') ?? DateTime.now(),
+      id: id,
+      displayName: displayName,
+      email: email,
+      friendsSince: friendsSince,
     );
   }
 
