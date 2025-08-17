@@ -25,6 +25,7 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
   final titleController = TextEditingController();
   final urlController = TextEditingController();
   bool isLoading = false;
+  bool hasOrderChanged = false;
 
   @override
   void initState() {
@@ -38,9 +39,23 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
 
   @override
   void dispose() {
+    _saveOrderIfChanged();
     titleController.dispose();
     urlController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveOrderIfChanged() async {
+    if (hasOrderChanged && playlist.videos.isNotEmpty) {
+      try {
+        final itemOrder = playlist.videos.map((video) => video.id).toList();
+        await ApiService.reorderPlaylistItems(playlist.id, itemOrder);
+        print('Order saved successfully');
+      } catch (e) {
+        print('Failed to save order: $e');
+        // Note: We don't show a snackbar here since the widget might be disposed
+      }
+    }
   }
 
   Future<void> addVideo() async {
@@ -228,12 +243,12 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
       
       final VideoItem item = playlist.videos.removeAt(oldIndex);
       playlist.videos.insert(newIndex, item);
+      
+      // Mark that order has changed
+      hasOrderChanged = true;
     });
     
     widget.onPlaylistUpdated(playlist);
-    
-    // Note: You might want to add an API call here later to persist the order
-    // For now, this just updates the local state
   }
 
   @override

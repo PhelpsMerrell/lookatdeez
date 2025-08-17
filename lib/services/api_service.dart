@@ -178,6 +178,26 @@ class ApiService {
     }
   }
 
+  static Future<void> reorderPlaylistItems(String playlistId, List<String> itemOrder) async {
+    try {
+      final headers = await _headers;
+      final response = await http.put(
+        Uri.parse('$baseUrl/playlists/$playlistId/items/order'),
+        headers: headers,
+        body: json.encode({
+          'itemOrder': itemOrder,
+        }),
+      );
+      
+      if (response.statusCode != 204) {
+        throw Exception('Failed to reorder items: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Reorder items error: $e');
+      rethrow;
+    }
+  }
+
   // ==== FRIEND MANAGEMENT METHODS ====
   
   // Get user's friends list
