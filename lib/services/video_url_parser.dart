@@ -129,11 +129,21 @@ class VideoUrlParser {
     String? videoId;
 
     if (uri.host.contains('youtu.be')) {
-      // Short URL: https://youtu.be/VIDEO_ID
+      // Short URL: https://youtu.be/VIDEO_ID?si=...
       videoId = uri.pathSegments.isNotEmpty ? uri.pathSegments[0] : null;
+      // Remove any query parameters from the video ID
+      if (videoId != null && videoId.contains('?')) {
+        videoId = videoId.split('?')[0];
+      }
     } else {
-      // Regular URL: https://youtube.com/watch?v=VIDEO_ID
+      // Regular URL: https://youtube.com/watch?v=VIDEO_ID&...
       videoId = uri.queryParameters['v'];
+    }
+
+    // Clean video ID - remove any additional parameters
+    if (videoId != null) {
+      // Remove common YouTube URL parameters that might be attached
+      videoId = videoId.split('&')[0].split('?')[0].split('#')[0];
     }
 
     if (videoId == null || videoId.isEmpty) {

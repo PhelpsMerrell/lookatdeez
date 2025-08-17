@@ -71,7 +71,7 @@ class YouTubePlayerWidget extends StatefulWidget {
 }
 
 class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
-  late YoutubePlayerController _controller;
+  YoutubePlayerController? _controller;
   bool _isLoading = true;
   String? _error;
 
@@ -81,8 +81,10 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
     _initializePlayer();
   }
 
-  void _initializePlayer() {
+  void _initializePlayer() async {
     try {
+      print('Initializing YouTube player with video ID: ${widget.parsedVideo.videoId}');
+      
       _controller = YoutubePlayerController(
         initialVideoId: widget.parsedVideo.videoId,
         flags: const YoutubePlayerFlags(
@@ -94,14 +96,17 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
         ),
       );
 
-      _controller.addListener(() {
+      // Simple approach - just wait a bit then mark as ready
+      Future.delayed(const Duration(seconds: 3), () {
         if (mounted) {
           setState(() {
             _isLoading = false;
           });
         }
       });
+      
     } catch (e) {
+      print('YouTube player initialization error: $e');
       setState(() {
         _error = 'Failed to load YouTube video: $e';
         _isLoading = false;
@@ -111,7 +116,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -125,7 +130,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
       );
     }
 
-    if (_isLoading) {
+    if (_isLoading || _controller == null) {
       return const LoadingVideoWidget();
     }
 
@@ -137,7 +142,7 @@ class _YouTubePlayerWidgetState extends State<YouTubePlayerWidget> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: YoutubePlayer(
-          controller: _controller,
+          controller: _controller!,
           showVideoProgressIndicator: true,
           aspectRatio: 16 / 9,
           progressIndicatorColor: Theme.of(context).colorScheme.primary,
@@ -353,9 +358,9 @@ class _VideoPlayerControlsOverlayState extends State<VideoPlayerControlsOverlay>
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withOpacity(0.7),
+                      Colors.black.withAlpha(179),
                       Colors.transparent,
-                      Colors.black.withOpacity(0.7),
+                      Colors.black.withAlpha(179),
                     ],
                   ),
                 ),
@@ -505,7 +510,7 @@ class ErrorVideoWidget extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.red[900]?.withOpacity(0.2),
+        color: Colors.red[900]?.withAlpha(51),
         border: Border.all(color: Colors.red[700]!),
       ),
       padding: const EdgeInsets.all(24),

@@ -49,25 +49,13 @@ class PlaylistCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  PopupMenuButton(
-                    icon: Icon(
-                      Icons.more_vert,
-                      color: Theme.of(context).colorScheme.outline,
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.red.withAlpha(25), // Using withAlpha instead of withOpacity
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Delete'),
-                          ],
-                        ),
-                      ),
-                    ],
-                    onSelected: (value) async {
-                      if (value == 'delete') {
+                    child: IconButton(
+                      onPressed: () async {
                         final confirm = await showDialog<bool>(
                           context: context,
                           builder: (context) => AlertDialog(
@@ -88,8 +76,16 @@ class PlaylistCard extends StatelessWidget {
                         if (confirm == true) {
                           onDelete();
                         }
-                      }
-                    },
+                      },
+                      icon: const Icon(Icons.delete_outline),
+                      color: Colors.red.shade700,
+                      iconSize: 20,
+                      constraints: const BoxConstraints(
+                        minWidth: 36,
+                        minHeight: 36,
+                      ),
+                      padding: const EdgeInsets.all(8),
+                    ),
                   ),
                 ],
               ),

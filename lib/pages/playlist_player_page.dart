@@ -5,6 +5,7 @@ import '../models/video_item.dart';
 import '../services/video_url_parser.dart';
 import '../widgets/video_player_widget.dart';
 import '../widgets/video_terms_dialog.dart';
+import '../widgets/video_debug_widget.dart';
 
 class PlaylistPlayerPage extends StatefulWidget {
   final Playlist playlist;
@@ -249,6 +250,12 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
                           ),
                           
                           const SizedBox(height: 16),
+                          
+                          // DEBUG: Show parsed video info (remove this in production)
+                          VideoDebugWidget(
+                            url: video.url,
+                            parsedVideo: parsedVideo,
+                          ),
                           
                           // Video Player Area
                           Expanded(
