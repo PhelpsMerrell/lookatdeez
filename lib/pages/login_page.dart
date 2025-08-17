@@ -57,22 +57,22 @@ void _handleSubmit() async {
       // Map usernames to actual user IDs from your database
       final Map<String, Map<String, String>> testUsers = {
         'test': {
-          'userId': 'the-actual-user-id-from-cosmos', // Replace with real ID
+          'userId': '2279ff79-74c9-4365-bd68-b0ab269c10af', // Replace with real ID
           'email': 'test@example.com',
           'displayName': 'Test User'
         },
         'alice': {
-          'userId': 'alice-actual-id-from-cosmos', // Replace with real ID  
+          'userId': 'c31fe476-0699-44cb-8755-6b8629305ead', // Replace with real ID  
           'email': 'alice@example.com',
           'displayName': 'Alice Smith'
         },
         'bob': {
-          'userId': 'bob-actual-id-from-cosmos', // Replace with real ID
+          'userId': 'de7003dc-6474-4f2b-8de9-23554ed605cc', // Replace with real ID
           'email': 'bob@example.com', 
           'displayName': 'Bob Jones'
         },
       };
-      
+      print('DEBUG: Available users: $testUsers');
       String username = _usernameController.text.toLowerCase();
       
       if (testUsers.containsKey(username)) {

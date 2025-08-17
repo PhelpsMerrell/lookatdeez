@@ -22,8 +22,8 @@ class Playlist {
   factory Playlist.fromJson(Map<String, dynamic> json) {
     return Playlist(
       id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      videos: (json['videos'] as List<dynamic>?)
+      name: json['title'] ?? '', // API returns 'title'
+      videos: (json['items'] as List<dynamic>?) // API returns 'items'
           ?.map((v) => VideoItem.fromJson(v))
           .toList() ?? [],
     );
