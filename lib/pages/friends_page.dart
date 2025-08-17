@@ -169,13 +169,41 @@ class _FriendsPageState extends State<FriendsPage> with TickerProviderStateMixin
   }
 
   Widget _buildFriendCard(Friend friend) {
+    // Handle empty display names gracefully
+    final displayName = friend.displayName.isNotEmpty ? friend.displayName : friend.email;
+    final avatar = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
+    
     return Card(
       child: ListTile(
         leading: CircleAvatar(
-          child: Text(friend.displayName.isNotEmpty ? friend.displayName[0].toUpperCase() : '?'),
+          backgroundColor: Colors.blue[100],
+          child: Text(
+            avatar,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.blue,
+            ),
+          ),
         ),
-        title: Text(friend.displayName),
-        subtitle: Text(friend.email),
+        title: Text(
+          displayName,
+          style: const TextStyle(fontWeight: FontWeight.w500),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (friend.displayName.isNotEmpty && friend.displayName != friend.email)
+              Text(friend.email, style: const TextStyle(fontSize: 12)),
+            Text(
+              'Friends since ${_formatDate(friend.friendsSince)}',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+        isThreeLine: true,
         trailing: PopupMenuButton(
           itemBuilder: (context) => [
             PopupMenuItem(
@@ -322,13 +350,38 @@ class _AddFriendsView extends StatefulWidget {
 class _AddFriendsViewState extends State<_AddFriendsView> {
   final TextEditingController _searchController = TextEditingController();
   List<User> _searchResults = [];
+  List<Friend> _currentFriends = [];
+  FriendRequestsEnvelope? _currentRequests;
   bool _isSearching = false;
   String _lastSearchTerm = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentData();
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCurrentData() async {
+    try {
+      final futures = await Future.wait([
+        ApiService.getCurrentUserFriends(),
+        ApiService.getFriendRequests(),
+      ]);
+      
+      setState(() {
+        _currentFriends = futures[0] as List<Friend>;
+        _currentRequests = futures[1] as FriendRequestsEnvelope;
+      });
+    } catch (e) {
+      // Silently handle errors - not critical for search functionality
+      print('Error loading current data: $e');
+    }
   }
 
   Future<void> _searchUsers(String query) async {
@@ -352,6 +405,109 @@ class _AddFriendsViewState extends State<_AddFriendsView> {
           SnackBar(content: Text('Search error: $e')),
         );
       }
+    }
+  }
+
+  // Helper method to determine user's friend status
+  String _getUserStatus(User user) {
+    // Check if already friends
+    if (_currentFriends.any((friend) => friend.id == user.id)) {
+      return 'friends';
+    }
+    
+    // Check if there's a pending request (sent by current user)
+    if (_currentRequests?.sent.any((request) => 
+        request.toUserId == user.id && request.status == FriendRequestStatus.pending) == true) {
+      return 'request_sent';
+    }
+    
+    // Check if there's a pending request (received from this user)
+    if (_currentRequests?.received.any((request) => 
+        request.fromUserId == user.id && request.status == FriendRequestStatus.pending) == true) {
+      return 'request_received';
+    }
+    
+    return 'none';
+  }
+
+  Widget _buildActionButton(User user, String status) {
+    switch (status) {
+      case 'friends':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.green[50],
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.green[300]!),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle, size: 16, color: Colors.green[700]),
+              const SizedBox(width: 4),
+              Text(
+                'Friends',
+                style: TextStyle(
+                  color: Colors.green[700],
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        );
+      case 'request_sent':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.orange[50],
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.orange[300]!),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.schedule, size: 16, color: Colors.orange[700]),
+              const SizedBox(width: 4),
+              Text(
+                'Pending',
+                style: TextStyle(
+                  color: Colors.orange[700],
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        );
+      case 'request_received':
+        return OutlinedButton.icon(
+          onPressed: () => _navigateToRequestsTab(),
+          icon: const Icon(Icons.inbox, size: 16),
+          label: const Text('View Request', style: TextStyle(fontSize: 12)),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.blue,
+            side: BorderSide(color: Colors.blue[300]!),
+          ),
+        );
+      default:
+        return ElevatedButton.icon(
+          onPressed: () => _sendFriendRequest(user),
+          icon: const Icon(Icons.person_add, size: 16),
+          label: const Text('Add', style: TextStyle(fontSize: 12)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+          ),
+        );
+    }
+  }
+
+  void _navigateToRequestsTab() {
+    // This will trigger the parent to switch to the requests tab
+    if (context.findAncestorStateOfType<_FriendsPageState>() != null) {
+      final friendsPageState = context.findAncestorStateOfType<_FriendsPageState>()!;
+      friendsPageState._tabController.animateTo(1); // Switch to requests tab
     }
   }
 
@@ -404,18 +560,29 @@ class _AddFriendsViewState extends State<_AddFriendsView> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemBuilder: (context, index) {
                 final user = _searchResults[index];
+                final status = _getUserStatus(user);
+                final displayName = user.displayName.isNotEmpty ? user.displayName : user.email;
+                
                 return Card(
                   child: ListTile(
                     leading: CircleAvatar(
-                      child: Text(user.displayName.isNotEmpty ? user.displayName[0].toUpperCase() : '?'),
+                      backgroundColor: Colors.blue[100],
+                      child: Text(
+                        displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
                     ),
-                    title: Text(user.displayName),
-                    subtitle: Text(user.email),
-                    trailing: ElevatedButton.icon(
-                      onPressed: () => _sendFriendRequest(user),
-                      icon: const Icon(Icons.person_add, size: 16),
-                      label: const Text('Add'),
+                    title: Text(
+                      displayName,
+                      style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
+                    subtitle: user.displayName.isNotEmpty && user.displayName != user.email
+                        ? Text(user.email, style: const TextStyle(fontSize: 12))
+                        : null,
+                    trailing: _buildActionButton(user, status),
                   ),
                 );
               },
@@ -429,15 +596,48 @@ class _AddFriendsViewState extends State<_AddFriendsView> {
     try {
       await ApiService.sendFriendRequest(user.id);
       widget.onRequestSent(); // Refresh the parent data
+      _loadCurrentData(); // Refresh local data to update button states
+      
       if (mounted) {
+        final displayName = user.displayName.isNotEmpty ? user.displayName : user.email;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Friend request sent to ${user.displayName}')),
+          SnackBar(
+            content: Text('Friend request sent to $displayName'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage;
+        Color backgroundColor;
+        
+        if (e is FriendRequestException) {
+          // Handle specific friend request errors with user-friendly messages
+          if (e.message.toLowerCase().contains('already friends')) {
+            errorMessage = '${user.displayName} is already your friend!';
+            backgroundColor = Colors.orange;
+          } else if (e.message.toLowerCase().contains('pending')) {
+            errorMessage = 'Friend request to ${user.displayName} is already pending';
+            backgroundColor = Colors.orange;
+          } else if (e.message.toLowerCase().contains('yourself')) {
+            errorMessage = "You can't send a friend request to yourself";
+            backgroundColor = Colors.orange;
+          } else {
+            errorMessage = e.message;
+            backgroundColor = Colors.red;
+          }
+        } else {
+          errorMessage = 'Failed to send friend request. Please try again.';
+          backgroundColor = Colors.red;
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error sending request: $e')),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: backgroundColor,
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     }

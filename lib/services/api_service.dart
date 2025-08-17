@@ -5,6 +5,15 @@ import '../models/playlist.dart';
 import '../models/video_item.dart';
 import '../models/friend.dart';
 
+// Custom exception for friend request specific errors
+class FriendRequestException implements Exception {
+  final String message;
+  FriendRequestException(this.message);
+  
+  @override
+  String toString() => message;
+}
+
 class ApiService {
   static const String baseUrl = 'http://localhost:7071/api';
   
@@ -211,8 +220,28 @@ class ApiService {
         }),
       );
       
-      if (response.statusCode == 201) {
+      if (response.statusCode == 201 || response.statusCode == 200) {
         return FriendRequest.fromJson(json.decode(response.body));
+      } else if (response.statusCode == 400) {
+        // Parse the error message from the response body
+        String errorMessage = 'Bad request';
+        try {
+          final errorBody = response.body;
+          if (errorBody.isNotEmpty) {
+            // If it's JSON, try to parse it
+            if (errorBody.startsWith('{')) {
+              final errorJson = json.decode(errorBody);
+              errorMessage = errorJson['error'] ?? errorBody;
+            } else {
+              // If it's plain text, use it directly
+              errorMessage = errorBody;
+            }
+          }
+        } catch (parseError) {
+          // If parsing fails, use the raw response body
+          errorMessage = response.body.isNotEmpty ? response.body : 'Unknown error';
+        }
+        throw FriendRequestException(errorMessage);
       } else {
         throw Exception('Failed to send friend request: ${response.statusCode}');
       }
