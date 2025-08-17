@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/playlist.dart';
 import '../models/video_item.dart';
+import '../services/video_url_parser.dart';
+import '../widgets/video_player_widget.dart';
+import '../widgets/video_terms_dialog.dart';
 
 class PlaylistPlayerPage extends StatefulWidget {
   final Playlist playlist;
@@ -19,6 +22,13 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
   int currentIndex = 0;
   PageController pageController = PageController();
   bool isLoading = false;
+  List<ParsedVideo> parsedVideos = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _parseAllVideos();
+  }
 
   @override
   void dispose() {
@@ -26,7 +36,14 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
     super.dispose();
   }
 
+  void _parseAllVideos() {
+    parsedVideos = widget.playlist.videos
+        .map((video) => VideoUrlParser.parseUrl(video.url))
+        .toList();
+  }
+
   VideoItem get currentVideo => widget.playlist.videos[currentIndex];
+  ParsedVideo get currentParsedVideo => parsedVideos[currentIndex];
   bool get hasNextVideo => currentIndex < widget.playlist.videos.length - 1;
   bool get hasPreviousVideo => currentIndex > 0;
 
@@ -107,7 +124,7 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -121,7 +138,7 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
         child: SafeArea(
           child: Column(
             children: [
-              // Top Bar
+              // Top Bar with Platform Info
               Container(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -148,22 +165,44 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          Text(
-                            '${currentIndex + 1} of ${widget.playlist.videos.length}',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
-                              fontSize: 14,
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                VideoUrlParser.getPlatformIcon(currentParsedVideo.platform),
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                VideoUrlParser.getPlatformName(currentParsedVideo.platform),
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.7),
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${currentIndex + 1} of ${widget.playlist.videos.length}',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.7),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
                     IconButton(
-                      onPressed: () {
-                        // Navigate back to editor
-                        Navigator.pop(context);
-                      },
-                      icon: const Icon(Icons.edit, color: Colors.white),
+                      onPressed: () => VideoTermsDialog.show(context),
+                      icon: const Icon(Icons.info_outline, color: Colors.white),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white.withOpacity(0.1),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: openVideoUrl,
+                      icon: const Icon(Icons.open_in_new, color: Colors.white),
                       style: IconButton.styleFrom(
                         backgroundColor: Colors.white.withOpacity(0.1),
                       ),
@@ -182,104 +221,145 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
                   itemCount: widget.playlist.videos.length,
                   itemBuilder: (context, index) {
                     final video = widget.playlist.videos[index];
+                    final parsedVideo = parsedVideos[index];
+                    
                     return Container(
                       margin: const EdgeInsets.all(20),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // Video Preview Card
+                          // Video Title
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              video.title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          // Video Player Area
                           Expanded(
                             child: Container(
                               width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[900],
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.1),
-                                  width: 1,
-                                ),
+                              constraints: const BoxConstraints(
+                                minHeight: 200,
+                                maxHeight: 400,
                               ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  // Placeholder for video thumbnail/embed
-                                  Container(
-                                    width: 120,
-                                    height: 120,
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(60),
-                                    ),
-                                    child: Icon(
-                                      Icons.play_circle_fill,
-                                      size: 60,
-                                      color: Theme.of(context).colorScheme.primary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24),
-                                  
-                                  // Video Title
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                                    child: Text(
-                                      video.title,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      maxLines: 3,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  
-                                  // Video URL (truncated)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                                    child: Text(
-                                      video.url,
-                                      style: TextStyle(
-                                        color: Colors.white.withOpacity(0.7),
-                                        fontSize: 14,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
+                              child: VideoPlayerWidget(
+                                parsedVideo: parsedVideo,
+                                title: video.title,
                               ),
                             ),
                           ),
                           
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
                           
-                          // Play Button
-                          SizedBox(
+                          // Video Info & Actions
+                          Container(
                             width: double.infinity,
-                            height: 56,
-                            child: ElevatedButton.icon(
-                              onPressed: isLoading ? null : openVideoUrl,
-                              icon: isLoading 
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    )
-                                  : const Icon(Icons.play_arrow, size: 28),
-                              label: Text(
-                                isLoading ? 'Opening...' : 'Play Video',
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).colorScheme.primary,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                // Platform and Status Info
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          VideoUrlParser.getPlatformIcon(parsedVideo.platform),
+                                          style: const TextStyle(fontSize: 20),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          VideoUrlParser.getPlatformName(parsedVideo.platform),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: _getStatusColor(parsedVideo.platform),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        _getStatusText(parsedVideo.platform),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
+                                
+                                const SizedBox(height: 12),
+                                
+                                // URL Display (truncated)
+                                Text(
+                                  video.url,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.6),
+                                    fontSize: 12,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                
+                                const SizedBox(height: 16),
+                                
+                                // Action Buttons
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        onPressed: isLoading ? null : openVideoUrl,
+                                        icon: isLoading 
+                                            ? const SizedBox(
+                                                width: 16,
+                                                height: 16,
+                                                child: CircularProgressIndicator(strokeWidth: 2),
+                                              )
+                                            : const Icon(Icons.open_in_new, size: 18),
+                                        label: Text(
+                                          isLoading ? 'Opening...' : 'Open Original',
+                                          style: const TextStyle(fontSize: 14),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.white.withOpacity(0.1),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -310,20 +390,30 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
                       ),
                     ),
                     
-                    // Video Counter
+                    // Video Counter with Platform Icons
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text(
-                        '${currentIndex + 1} / ${widget.playlist.videos.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${currentIndex + 1} / ${widget.playlist.videos.length}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            VideoUrlParser.getPlatformIcon(currentParsedVideo.platform),
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ],
                       ),
                     ),
                     
@@ -349,5 +439,37 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
         ),
       ),
     );
+  }
+
+  Color _getStatusColor(VideoPlatform platform) {
+    switch (platform) {
+      case VideoPlatform.youtube:
+      case VideoPlatform.vimeo:
+      case VideoPlatform.direct:
+        return Colors.green;
+      case VideoPlatform.instagram:
+      case VideoPlatform.tiktok:
+      case VideoPlatform.twitch:
+        return Colors.orange;
+      case VideoPlatform.twitter:
+      case VideoPlatform.unsupported:
+        return Colors.red;
+    }
+  }
+
+  String _getStatusText(VideoPlatform platform) {
+    switch (platform) {
+      case VideoPlatform.youtube:
+      case VideoPlatform.vimeo:
+      case VideoPlatform.direct:
+        return 'PLAYABLE';
+      case VideoPlatform.instagram:
+      case VideoPlatform.tiktok:
+      case VideoPlatform.twitch:
+        return 'EMBED';
+      case VideoPlatform.twitter:
+      case VideoPlatform.unsupported:
+        return 'LINK ONLY';
+    }
   }
 }

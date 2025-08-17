@@ -4,6 +4,7 @@ import '../models/video_item.dart';
 import '../services/api_service.dart';
 import '../widgets/video_card.dart';
 import '../widgets/friend_share_sheet.dart';
+import '../widgets/video_terms_dialog.dart';
 import 'playlist_player_page.dart';
 
 class PlaylistEditorPage extends StatefulWidget {
@@ -86,6 +87,35 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Colors.blue[700]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Supported: YouTube, Instagram, TikTok, Vimeo, Twitch, direct video files',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[700],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: VideoTermsButton(),
             ),
           ],
         ),

@@ -32,7 +32,11 @@ dependencies:
     sdk: flutter
   http: ^1.1.0
   shared_preferences: ^2.2.2
-  url_launcher: ^6.2.2  
+  url_launcher: ^6.2.2
+  webview_flutter: ^4.4.4
+  youtube_player_flutter: ^9.0.3
+  video_player: ^2.8.2
+  flutter_inappwebview: ^6.0.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
