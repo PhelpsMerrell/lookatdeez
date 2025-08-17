@@ -4,13 +4,11 @@ import '../models/video_item.dart';
 class VideoCard extends StatelessWidget {
   final VideoItem video;
   final VoidCallback onDelete;
-  final int index;
 
   const VideoCard({
     super.key,
     required this.video,
     required this.onDelete,
-    required this.index,
   });
 
   @override
@@ -65,40 +63,12 @@ class VideoCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Drag handle (for reordering)
-            ReorderableDragStartListener(
-              index: index,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Icon(
-                  Icons.drag_handle,
-                  color: Theme.of(context).colorScheme.outline,
-                ),
-              ),
-            ),
-            // Actions menu
-            PopupMenuButton(
-              icon: Icon(
-                Icons.more_vert,
-                color: Theme.of(context).colorScheme.outline,
-              ),
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete_outline, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Delete'),
-                    ],
-                  ),
-                ),
-              ],
-              onSelected: (value) {
-                if (value == 'delete') {
-                  onDelete();
-                }
-              },
+            // Delete button
+            IconButton(
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline),
+              color: Colors.red,
+              iconSize: 20,
             ),
           ],
         ),

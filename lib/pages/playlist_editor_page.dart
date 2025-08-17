@@ -197,9 +197,9 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
   }
 
   void _showShareSheet() {
-  // This shows the sheet; no need to wrap it in another showModalBottomSheet
-  showFriendShareSheet(context);
-}
+    // This shows the sheet; no need to wrap it in another showModalBottomSheet
+    showFriendShareSheet(context);
+  }
 
   void _openPlayMode() {
     if (playlist.videos.isNotEmpty) {
@@ -236,7 +236,6 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
     // For now, this just updates the local state
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -266,103 +265,99 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
                   SliverToBoxAdapter(
                     child: Container(
                       margin: const EdgeInsets.all(16),
-                      child: Hero(
-                        tag: 'playlist-${playlist.id}',
-                        child: Material(
-                          type: MaterialType.transparency,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // Top action bar
+                            Row(
                               children: [
-                                // Top action bar
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      icon: const Icon(Icons.arrow_back_ios),
-                                      style: IconButton.styleFrom(
-                                        backgroundColor: Theme.of(context)
-                                            .colorScheme
-                                            .primaryContainer
-                                            .withValues(alpha: 0.5),
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    IconButton(
-                                      onPressed: _showShareSheet,
-                                      icon: const Icon(Icons.share_rounded),
-                                      style: IconButton.styleFrom(
-                                        backgroundColor: Theme.of(context)
-                                            .colorScheme
-                                            .primaryContainer
-                                            .withValues(alpha: 0.8),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 24),
-                                
-                                // Playlist icon and info - now a play button
-                                GestureDetector(
-                                  onTap: _openPlayMode,
-                                  child: Container(
-                                    width: 80,
-                                    height: 80,
-                                    decoration: BoxDecoration(
-                                      color: playlist.videos.isNotEmpty 
-                                          ? Colors.green.withOpacity(0.2)
-                                          : Theme.of(context).colorScheme.primaryContainer,
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: playlist.videos.isNotEmpty 
-                                          ? Border.all(color: Colors.green, width: 2)
-                                          : null,
-                                    ),
-                                    child: Icon(
-                                      playlist.videos.isNotEmpty 
-                                          ? Icons.play_circle_fill
-                                          : Icons.playlist_play,
-                                      color: playlist.videos.isNotEmpty 
-                                          ? Colors.green
-                                          : Theme.of(context).colorScheme.primary,
-                                      size: 40,
-                                    ),
+                                IconButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  icon: const Icon(Icons.arrow_back_ios),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer
+                                        .withValues(alpha: 0.5),
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                
-                                Text(
-                                  playlist.name,
-                                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(context).colorScheme.onSurface,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '${playlist.videos.length} videos',
-                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                                const Spacer(),
+                                IconButton(
+                                  onPressed: _showShareSheet,
+                                  icon: const Icon(Icons.share_rounded),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer
+                                        .withValues(alpha: 0.8),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
+                            const SizedBox(height: 24),
+                            
+                            // Playlist icon and info - now a play button
+                            GestureDetector(
+                              onTap: _openPlayMode,
+                              child: Hero(
+                                tag: 'playlist-icon-${playlist.id}',
+                                child: Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    color: playlist.videos.isNotEmpty 
+                                        ? Colors.green.withOpacity(0.2)
+                                        : Theme.of(context).colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: playlist.videos.isNotEmpty 
+                                        ? Border.all(color: Colors.green, width: 2)
+                                        : null,
+                                  ),
+                                  child: Icon(
+                                    playlist.videos.isNotEmpty 
+                                        ? Icons.play_circle_fill
+                                        : Icons.playlist_play,
+                                    color: playlist.videos.isNotEmpty 
+                                        ? Colors.green
+                                        : Theme.of(context).colorScheme.primary,
+                                    size: 40,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            
+                            Text(
+                              playlist.name,
+                              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${playlist.videos.length} videos',
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -427,7 +422,6 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
                               child: VideoCard(
                                 video: video,
                                 onDelete: () => _deleteVideo(index),
-                                index: index,
                               ),
                             );
                           },
