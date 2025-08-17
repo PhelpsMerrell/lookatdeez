@@ -55,15 +55,15 @@ class FriendRequest {
 
   factory FriendRequest.fromJson(Map<String, dynamic> json) {
     return FriendRequest(
-      id: json['id'] ?? '',
-      fromUserId: json['fromUserId'] ?? '',
-      fromUserDisplayName: json['fromUserDisplayName'] ?? '',
-      toUserId: json['toUserId'] ?? '',
-      toUserDisplayName: json['toUserDisplayName'] ?? '',
-      status: _statusFromInt(json['status'] ?? 0),
-      requestedAt: DateTime.tryParse(json['requestedAt'] ?? '') ?? DateTime.now(),
-      respondedAt: json['respondedAt'] != null 
-          ? DateTime.tryParse(json['respondedAt']) 
+      id: json['Id'] ?? json['id'] ?? '',
+      fromUserId: json['FromUserId'] ?? json['fromUserId'] ?? '',
+      fromUserDisplayName: json['FromUserDisplayName'] ?? json['fromUserDisplayName'] ?? '',
+      toUserId: json['ToUserId'] ?? json['toUserId'] ?? '',
+      toUserDisplayName: json['ToUserDisplayName'] ?? json['toUserDisplayName'] ?? '',
+      status: _statusFromInt(json['Status'] ?? json['status'] ?? 0),
+      requestedAt: DateTime.tryParse(json['RequestedAt'] ?? json['requestedAt'] ?? '') ?? DateTime.now(),
+      respondedAt: (json['RespondedAt'] ?? json['respondedAt']) != null 
+          ? DateTime.tryParse(json['RespondedAt'] ?? json['respondedAt']) 
           : null,
     );
   }
@@ -110,10 +110,10 @@ class FriendRequestsEnvelope {
 
   factory FriendRequestsEnvelope.fromJson(Map<String, dynamic> json) {
     return FriendRequestsEnvelope(
-      sent: (json['sent'] as List<dynamic>?)
+      sent: (json['Sent'] ?? json['sent'] as List<dynamic>?)
           ?.map((item) => FriendRequest.fromJson(item))
           .toList() ?? [],
-      received: (json['received'] as List<dynamic>?)
+      received: (json['Received'] ?? json['received'] as List<dynamic>?)
           ?.map((item) => FriendRequest.fromJson(item))
           .toList() ?? [],
     );
@@ -135,10 +135,10 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'] ?? '',
-      displayName: json['displayName'] ?? '',
-      email: json['email'] ?? '',
-      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      id: json['Id'] ?? json['id'] ?? '',
+      displayName: json['DisplayName'] ?? json['displayName'] ?? '',
+      email: json['Email'] ?? json['email'] ?? '',
+      createdAt: DateTime.tryParse(json['CreatedAt'] ?? json['createdAt'] ?? '') ?? DateTime.now(),
     );
   }
 }

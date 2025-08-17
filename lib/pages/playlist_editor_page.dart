@@ -219,10 +219,33 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
     }
   }
 
+  Future<void> _reorderVideos(int oldIndex, int newIndex) async {
+    setState(() {
+      // Adjust newIndex if moving down
+      if (oldIndex < newIndex) {
+        newIndex -= 1;
+      }
+      
+      final VideoItem item = playlist.videos.removeAt(oldIndex);
+      playlist.videos.insert(newIndex, item);
+    });
+    
+    widget.onPlaylistUpdated(playlist);
+    
+    // Note: You might want to add an API call here later to persist the order
+    // For now, this just updates the local state
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: isLoading ? null : addVideo,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        child: const Icon(Icons.add),
+      ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -278,26 +301,6 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
                                       ),
                                     ),
                                     const Spacer(),
-                                    ElevatedButton.icon(
-                                      onPressed: _openPlayMode,
-                                      icon: const Icon(Icons.play_arrow),
-                                      label: const Text('Play'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    ElevatedButton.icon(
-                                      onPressed: isLoading ? null : addVideo,
-                                      icon: const Icon(Icons.add),
-                                      label: const Text('Add Video'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Theme.of(context).colorScheme.primary,
-                                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
                                     IconButton(
                                       onPressed: _showShareSheet,
                                       icon: const Icon(Icons.share_rounded),
@@ -312,18 +315,30 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
                                 ),
                                 const SizedBox(height: 24),
                                 
-                                // Playlist icon and info
-                                Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.primaryContainer,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Icon(
-                                    Icons.play_circle_fill,
-                                    color: Theme.of(context).colorScheme.primary,
-                                    size: 40,
+                                // Playlist icon and info - now a play button
+                                GestureDetector(
+                                  onTap: _openPlayMode,
+                                  child: Container(
+                                    width: 80,
+                                    height: 80,
+                                    decoration: BoxDecoration(
+                                      color: playlist.videos.isNotEmpty 
+                                          ? Colors.green.withOpacity(0.2)
+                                          : Theme.of(context).colorScheme.primaryContainer,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: playlist.videos.isNotEmpty 
+                                          ? Border.all(color: Colors.green, width: 2)
+                                          : null,
+                                    ),
+                                    child: Icon(
+                                      playlist.videos.isNotEmpty 
+                                          ? Icons.play_circle_fill
+                                          : Icons.playlist_play,
+                                      color: playlist.videos.isNotEmpty 
+                                          ? Colors.green
+                                          : Theme.of(context).colorScheme.primary,
+                                      size: 40,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 16),
@@ -396,21 +411,26 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
                       ),
                     )
                   else
-                    SliverPadding(
-                      padding: const EdgeInsets.all(16),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
+                    SliverToBoxAdapter(
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        child: ReorderableListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          onReorder: _reorderVideos,
+                          itemCount: playlist.videos.length,
+                          itemBuilder: (context, index) {
                             final video = playlist.videos[index];
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
+                            return Container(
+                              key: ValueKey(video.id),
+                              margin: const EdgeInsets.only(bottom: 12),
                               child: VideoCard(
                                 video: video,
                                 onDelete: () => _deleteVideo(index),
+                                index: index,
                               ),
                             );
                           },
-                          childCount: playlist.videos.length,
                         ),
                       ),
                     ),

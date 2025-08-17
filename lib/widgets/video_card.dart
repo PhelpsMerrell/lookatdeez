@@ -4,11 +4,13 @@ import '../models/video_item.dart';
 class VideoCard extends StatelessWidget {
   final VideoItem video;
   final VoidCallback onDelete;
+  final int index;
 
   const VideoCard({
     super.key,
     required this.video,
     required this.onDelete,
+    required this.index,
   });
 
   @override
@@ -61,6 +63,17 @@ class VideoCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
+              ),
+            ),
+            // Drag handle (for reordering)
+            ReorderableDragStartListener(
+              index: index,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(
+                  Icons.drag_handle,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
               ),
             ),
             // Actions menu
