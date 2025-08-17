@@ -4,6 +4,7 @@ import '../models/video_item.dart';
 import '../services/api_service.dart';
 import '../widgets/video_card.dart';
 import '../widgets/friend_share_sheet.dart';
+import 'playlist_player_page.dart';
 
 class PlaylistEditorPage extends StatefulWidget {
   final Playlist playlist;
@@ -200,6 +201,24 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
   showFriendShareSheet(context);
 }
 
+  void _openPlayMode() {
+    if (playlist.videos.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PlaylistPlayerPage(playlist: playlist),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add some videos first to start playing'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -259,6 +278,16 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
                                       ),
                                     ),
                                     const Spacer(),
+                                    ElevatedButton.icon(
+                                      onPressed: _openPlayMode,
+                                      icon: const Icon(Icons.play_arrow),
+                                      label: const Text('Play'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
                                     ElevatedButton.icon(
                                       onPressed: isLoading ? null : addVideo,
                                       icon: const Icon(Icons.add),
