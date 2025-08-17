@@ -1,0 +1,678 @@
+Folder PATH listing for volume Acer
+Volume serial number is D803-A8B4
+C:.
+|   .gitignore
+|   .metadata
+|   analysis_options.yaml
+|   lookatdeez.iml
+|   project-structure.txt
+|   pubspec.lock
+|   pubspec.yaml
+|   README.md
+|   
++---.dart_tool
+|   |   package_config.json
+|   |   package_graph.json
+|   |   version
+|   |   
+|   +---chrome-device
+|   |   \---Default
+|   |       |   Account Web Data
+|   |       |   Account Web Data-journal
+|   |       |   Affiliation Database
+|   |       |   Affiliation Database-journal
+|   |       |   BookmarkMergedSurfaceOrdering
+|   |       |   BrowsingTopicsSiteData
+|   |       |   BrowsingTopicsSiteData-journal
+|   |       |   BrowsingTopicsState
+|   |       |   DIPS
+|   |       |   DIPS-wal
+|   |       |   Favicons
+|   |       |   Favicons-journal
+|   |       |   heavy_ad_intervention_opt_out.db
+|   |       |   heavy_ad_intervention_opt_out.db-journal
+|   |       |   History
+|   |       |   History-journal
+|   |       |   LOCK
+|   |       |   LOG
+|   |       |   LOG.old
+|   |       |   Login Data
+|   |       |   Login Data For Account
+|   |       |   Login Data For Account-journal
+|   |       |   Login Data-journal
+|   |       |   Network Action Predictor
+|   |       |   Network Action Predictor-journal
+|   |       |   passkey_enclave_state
+|   |       |   Preferences
+|   |       |   PreferredApps
+|   |       |   README
+|   |       |   Secure Preferences
+|   |       |   ServerCertificate
+|   |       |   ServerCertificate-journal
+|   |       |   SharedStorage
+|   |       |   SharedStorage-wal
+|   |       |   Shortcuts
+|   |       |   Shortcuts-journal
+|   |       |   Top Sites
+|   |       |   Top Sites-journal
+|   |       |   trusted_vault.pb
+|   |       |   Web Data
+|   |       |   Web Data-journal
+|   |       |   
+|   |       +---AutofillStrikeDatabase
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       LOG.old
+|   |       |       
+|   |       +---blob_storage
+|   |       |   +---07a6a9de-1a6d-4873-9855-28f571027978
+|   |       |   +---12b7814a-73f8-411a-bf0e-dfa44389310e
+|   |       |   +---463a9d63-2a0a-479f-ae01-85fe429d9d62
+|   |       |   +---48e292bc-2cf1-45fb-a404-350bbd374ace
+|   |       |   +---59081959-e41f-44c2-897a-977511e2fa5a
+|   |       |   +---74513d38-3d65-4e0d-a6ab-8bbcb3076950
+|   |       |   +---7ab58d87-fb7c-46f1-af99-f4bd33762b22
+|   |       |   +---7cbb1020-a94a-4e74-a76d-f0b70139dd9e
+|   |       |   +---86636f5d-0ce6-44ca-86ae-fbc08ee201b0
+|   |       |   +---cccc17a7-c223-42a2-8480-e7a53478d7b0
+|   |       |   +---e6402c69-d382-43ce-b507-d71e869473c6
+|   |       |   +---ea6c2922-d8b8-4ea9-8e22-01ca406bfd1c
+|   |       |   +---eab18fe5-ddcd-4f2c-80af-92b82d23879c
+|   |       |   \---fbdbd897-a801-40ba-abd4-5c9b4dcc36e7
+|   |       +---BudgetDatabase
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       LOG.old
+|   |       |       
+|   |       +---chrome_cart_db
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       LOG.old
+|   |       |       
+|   |       +---ClientCertificates
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       LOG.old
+|   |       |       
+|   |       +---commerce_subscription_db
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       LOG.old
+|   |       |       
+|   |       +---discounts_db
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       LOG.old
+|   |       |       
+|   |       +---discount_infos_db
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       LOG.old
+|   |       |       
+|   |       +---Download Service
+|   |       |   +---EntryDB
+|   |       |   |       LOCK
+|   |       |   |       LOG
+|   |       |   |       LOG.old
+|   |       |   |       
+|   |       |   \---Files
+|   |       +---Extension Rules
+|   |       |       000003.log
+|   |       |       CURRENT
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       MANIFEST-000001
+|   |       |       
+|   |       +---Extension Scripts
+|   |       |       000003.log
+|   |       |       CURRENT
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       MANIFEST-000001
+|   |       |       
+|   |       +---Extension State
+|   |       |       000003.log
+|   |       |       CURRENT
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       LOG.old
+|   |       |       MANIFEST-000001
+|   |       |       
+|   |       +---Feature Engagement Tracker
+|   |       |   +---AvailabilityDB
+|   |       |   |       LOCK
+|   |       |   |       LOG
+|   |       |   |       LOG.old
+|   |       |   |       
+|   |       |   \---EventDB
+|   |       |           LOCK
+|   |       |           LOG
+|   |       |           LOG.old
+|   |       |           
+|   |       +---GCM Store
+|   |       |   |   000003.log
+|   |       |   |   CURRENT
+|   |       |   |   LOCK
+|   |       |   |   LOG
+|   |       |   |   MANIFEST-000001
+|   |       |   |   
+|   |       |   \---Encryption
+|   |       |           000003.log
+|   |       |           CURRENT
+|   |       |           LOCK
+|   |       |           LOG
+|   |       |           LOG.old
+|   |       |           MANIFEST-000001
+|   |       |           
+|   |       +---Local Storage
+|   |       |   \---leveldb
+|   |       |           000003.log
+|   |       |           CURRENT
+|   |       |           LOCK
+|   |       |           LOG
+|   |       |           LOG.old
+|   |       |           MANIFEST-000001
+|   |       |           
+|   |       +---Network
+|   |       |       Cookies
+|   |       |       Cookies-journal
+|   |       |       Network Persistent State
+|   |       |       NetworkDataMigrated
+|   |       |       Reporting and NEL
+|   |       |       Reporting and NEL-journal
+|   |       |       TransportSecurity
+|   |       |       Trust Tokens
+|   |       |       Trust Tokens-journal
+|   |       |       
+|   |       +---optimization_guide_hint_cache_store
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       LOG.old
+|   |       |       
+|   |       +---parcel_tracking_db
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       LOG.old
+|   |       |       
+|   |       +---PersistentOriginTrials
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       LOG.old
+|   |       |       
+|   |       +---Safe Browsing Network
+|   |       |       NetworkDataMigrated
+|   |       |       Safe Browsing Cookies
+|   |       |       Safe Browsing Cookies-journal
+|   |       |       
+|   |       +---Segmentation Platform
+|   |       |   +---SegmentInfoDB
+|   |       |   |       LOCK
+|   |       |   |       LOG
+|   |       |   |       LOG.old
+|   |       |   |       
+|   |       |   +---SignalDB
+|   |       |   |       LOCK
+|   |       |   |       LOG
+|   |       |   |       LOG.old
+|   |       |   |       
+|   |       |   \---SignalStorageConfigDB
+|   |       |           LOCK
+|   |       |           LOG
+|   |       |           LOG.old
+|   |       |           
+|   |       +---Service Worker
+|   |       |   +---Database
+|   |       |   |       000003.log
+|   |       |   |       CURRENT
+|   |       |   |       LOCK
+|   |       |   |       LOG
+|   |       |   |       LOG.old
+|   |       |   |       MANIFEST-000001
+|   |       |   |       
+|   |       |   \---ScriptCache
+|   |       |       |   2cc80dabc69f58b6_0
+|   |       |       |   4cb013792b196a35_0
+|   |       |       |   4cb013792b196a35_1
+|   |       |       |   index
+|   |       |       |   
+|   |       |       \---index-dir
+|   |       |               the-real-index
+|   |       |               
+|   |       +---Session Storage
+|   |       |       000003.log
+|   |       |       CURRENT
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       LOG.old
+|   |       |       MANIFEST-000001
+|   |       |       
+|   |       +---Sessions
+|   |       |       Session_13399710917012931
+|   |       |       Session_13399711066487460
+|   |       |       Session_13399711318294450
+|   |       |       Session_13399711894131709
+|   |       |       Session_13399712949062261
+|   |       |       Session_13399714483075810
+|   |       |       Session_13399714615607604
+|   |       |       Session_13399743028531302
+|   |       |       Session_13399748892156585
+|   |       |       Session_13399749010604380
+|   |       |       Session_13399749137048752
+|   |       |       Session_13399773174086334
+|   |       |       Session_13399784741764400
+|   |       |       Session_13399785036063983
+|   |       |       Session_13399785749895680
+|   |       |       Tabs_13399711075620962
+|   |       |       Tabs_13399711318409878
+|   |       |       Tabs_13399711894233161
+|   |       |       Tabs_13399712949160039
+|   |       |       Tabs_13399714483187089
+|   |       |       Tabs_13399714615719746
+|   |       |       Tabs_13399743028652584
+|   |       |       Tabs_13399748892319105
+|   |       |       Tabs_13399749010771739
+|   |       |       Tabs_13399749137224092
+|   |       |       Tabs_13399773174204976
+|   |       |       Tabs_13399784741955380
+|   |       |       Tabs_13399785036236432
+|   |       |       Tabs_13399785750077069
+|   |       |       
+|   |       +---Shared Dictionary
+|   |       |   |   db
+|   |       |   |   db-journal
+|   |       |   |   
+|   |       |   \---cache
+|   |       |       |   index
+|   |       |       |   
+|   |       |       \---index-dir
+|   |       |               the-real-index
+|   |       |               
+|   |       +---shared_proto_db
+|   |       |   |   000003.log
+|   |       |   |   000004.log
+|   |       |   |   000005.ldb
+|   |       |   |   000007.log
+|   |       |   |   000008.ldb
+|   |       |   |   CURRENT
+|   |       |   |   LOCK
+|   |       |   |   LOG
+|   |       |   |   LOG.old
+|   |       |   |   MANIFEST-000001
+|   |       |   |   
+|   |       |   \---metadata
+|   |       |           000003.log
+|   |       |           CURRENT
+|   |       |           LOCK
+|   |       |           LOG
+|   |       |           LOG.old
+|   |       |           MANIFEST-000001
+|   |       |           
+|   |       +---Site Characteristics Database
+|   |       |       000003.log
+|   |       |       CURRENT
+|   |       |       LOCK
+|   |       |       LOG
+|   |       |       LOG.old
+|   |       |       MANIFEST-000001
+|   |       |       
+|   |       +---Sync Data
+|   |       |   \---LevelDB
+|   |       |           000003.log
+|   |       |           CURRENT
+|   |       |           LOCK
+|   |       |           LOG
+|   |       |           LOG.old
+|   |       |           MANIFEST-000001
+|   |       |           
+|   |       \---WebStorage
+|   |               QuotaManager
+|   |               QuotaManager-journal
+|   |               
+|   +---dartpad
+|   |       web_plugin_registrant.dart
+|   |       
+|   \---extension_discovery
+|           devtools.json
+|           vs_code.json
+|           
++---.idea
+|   |   modules.xml
+|   |   workspace.xml
+|   |   
+|   +---libraries
+|   |       Dart_SDK.xml
+|   |       KotlinJavaRuntime.xml
+|   |       
+|   \---runConfigurations
+|           main_dart.xml
+|           
++---android
+|   |   .gitignore
+|   |   build.gradle.kts
+|   |   gradle.properties
+|   |   gradlew
+|   |   gradlew.bat
+|   |   local.properties
+|   |   lookatdeez_android.iml
+|   |   settings.gradle.kts
+|   |   
+|   +---.gradle
+|   |   +---8.12
+|   |   |   +---checksums
+|   |   |   |       checksums.lock
+|   |   |   |       md5-checksums.bin
+|   |   |   |       sha1-checksums.bin
+|   |   |   |       
+|   |   |   +---expanded
+|   |   |   +---fileChanges
+|   |   |   +---fileHashes
+|   |   |   |       fileHashes.bin
+|   |   |   |       fileHashes.lock
+|   |   |   |       resourceHashesCache.bin
+|   |   |   |       
+|   |   |   \---vcsMetadata
+|   |   +---buildOutputCleanup
+|   |   |       buildOutputCleanup.lock
+|   |   |       cache.properties
+|   |   |       
+|   |   +---noVersion
+|   |   |       buildLogic.lock
+|   |   |       
+|   |   \---vcs-1
+|   +---app
+|   |   |   build.gradle.kts
+|   |   |   
+|   |   \---src
+|   |       +---debug
+|   |       |       AndroidManifest.xml
+|   |       |       
+|   |       +---main
+|   |       |   |   AndroidManifest.xml
+|   |       |   |   
+|   |       |   +---java
+|   |       |   |   \---io
+|   |       |   |       \---flutter
+|   |       |   |           \---plugins
+|   |       |   |                   GeneratedPluginRegistrant.java
+|   |       |   |                   
+|   |       |   +---kotlin
+|   |       |   |   \---com
+|   |       |   |       \---example
+|   |       |   |           \---lookatdeez
+|   |       |   |                   MainActivity.kt
+|   |       |   |                   
+|   |       |   \---res
+|   |       |       +---drawable
+|   |       |       |       launch_background.xml
+|   |       |       |       
+|   |       |       +---drawable-v21
+|   |       |       |       launch_background.xml
+|   |       |       |       
+|   |       |       +---mipmap-hdpi
+|   |       |       |       ic_launcher.png
+|   |       |       |       
+|   |       |       +---mipmap-mdpi
+|   |       |       |       ic_launcher.png
+|   |       |       |       
+|   |       |       +---mipmap-xhdpi
+|   |       |       |       ic_launcher.png
+|   |       |       |       
+|   |       |       +---mipmap-xxhdpi
+|   |       |       |       ic_launcher.png
+|   |       |       |       
+|   |       |       +---mipmap-xxxhdpi
+|   |       |       |       ic_launcher.png
+|   |       |       |       
+|   |       |       +---values
+|   |       |       |       styles.xml
+|   |       |       |       
+|   |       |       \---values-night
+|   |       |               styles.xml
+|   |       |               
+|   |       \---profile
+|   |               AndroidManifest.xml
+|   |               
+|   \---gradle
+|       \---wrapper
+|               gradle-wrapper.jar
+|               gradle-wrapper.properties
+|               
++---build
+|   |   d2976540244dba7be000c4f9690bfe66.cache.dill.track.dill
+|   |   
+|   +---7f881d0a93147ab3e11a198ac774895a
+|   |       gen_dart_plugin_registrant.stamp
+|   |       gen_localizations.stamp
+|   |       _composite.stamp
+|   |       
+|   \---flutter_assets
+|       |   AssetManifest.bin
+|       |   AssetManifest.bin.json
+|       |   AssetManifest.json
+|       |   FontManifest.json
+|       |   NOTICES
+|       |   
+|       +---fonts
+|       |       MaterialIcons-Regular.otf
+|       |       
+|       +---packages
+|       |   \---cupertino_icons
+|       |       \---assets
+|       |               CupertinoIcons.ttf
+|       |               
+|       \---shaders
+|               ink_sparkle.frag
+|               
++---ios
+|   |   .gitignore
+|   |   
+|   +---Flutter
+|   |   |   AppFrameworkInfo.plist
+|   |   |   Debug.xcconfig
+|   |   |   flutter_export_environment.sh
+|   |   |   Generated.xcconfig
+|   |   |   Release.xcconfig
+|   |   |   
+|   |   \---ephemeral
+|   |           flutter_lldbinit
+|   |           flutter_lldb_helper.py
+|   |           
+|   +---Runner
+|   |   |   AppDelegate.swift
+|   |   |   GeneratedPluginRegistrant.h
+|   |   |   GeneratedPluginRegistrant.m
+|   |   |   Info.plist
+|   |   |   Runner-Bridging-Header.h
+|   |   |   
+|   |   +---Assets.xcassets
+|   |   |   +---AppIcon.appiconset
+|   |   |   |       Contents.json
+|   |   |   |       Icon-App-1024x1024@1x.png
+|   |   |   |       Icon-App-20x20@1x.png
+|   |   |   |       Icon-App-20x20@2x.png
+|   |   |   |       Icon-App-20x20@3x.png
+|   |   |   |       Icon-App-29x29@1x.png
+|   |   |   |       Icon-App-29x29@2x.png
+|   |   |   |       Icon-App-29x29@3x.png
+|   |   |   |       Icon-App-40x40@1x.png
+|   |   |   |       Icon-App-40x40@2x.png
+|   |   |   |       Icon-App-40x40@3x.png
+|   |   |   |       Icon-App-60x60@2x.png
+|   |   |   |       Icon-App-60x60@3x.png
+|   |   |   |       Icon-App-76x76@1x.png
+|   |   |   |       Icon-App-76x76@2x.png
+|   |   |   |       Icon-App-83.5x83.5@2x.png
+|   |   |   |       
+|   |   |   \---LaunchImage.imageset
+|   |   |           Contents.json
+|   |   |           LaunchImage.png
+|   |   |           LaunchImage@2x.png
+|   |   |           LaunchImage@3x.png
+|   |   |           README.md
+|   |   |           
+|   |   \---Base.lproj
+|   |           LaunchScreen.storyboard
+|   |           Main.storyboard
+|   |           
+|   +---Runner.xcodeproj
+|   |   |   project.pbxproj
+|   |   |   
+|   |   +---project.xcworkspace
+|   |   |   |   contents.xcworkspacedata
+|   |   |   |   
+|   |   |   \---xcshareddata
+|   |   |           IDEWorkspaceChecks.plist
+|   |   |           WorkspaceSettings.xcsettings
+|   |   |           
+|   |   \---xcshareddata
+|   |       \---xcschemes
+|   |               Runner.xcscheme
+|   |               
+|   +---Runner.xcworkspace
+|   |   |   contents.xcworkspacedata
+|   |   |   
+|   |   \---xcshareddata
+|   |           IDEWorkspaceChecks.plist
+|   |           WorkspaceSettings.xcsettings
+|   |           
+|   \---RunnerTests
+|           RunnerTests.swift
+|           
++---lib
+|   |   main.dart
+|   |   
+|   +---models
+|   |       playlist.dart
+|   |       video_item.dart
+|   |       
+|   +---pages
+|   |       friends_page.dart
+|   |       login_page.dart
+|   |       playlist_editor_page.dart
+|   |       playlist_menu_page.dart
+|   |       profile_page.dart
+|   |       
+|   +---services
+|   |       api_service.dart
+|   |       
+|   \---widgets
+|           friend_share_sheet.dart
+|           main_app_bar.dart
+|           playlist_card.dart
+|           video_card.dart
+|           
++---linux
+|   |   .gitignore
+|   |   CMakeLists.txt
+|   |   
+|   +---flutter
+|   |       CMakeLists.txt
+|   |       generated_plugins.cmake
+|   |       generated_plugin_registrant.cc
+|   |       generated_plugin_registrant.h
+|   |       
+|   \---runner
+|           CMakeLists.txt
+|           main.cc
+|           my_application.cc
+|           my_application.h
+|           
++---macos
+|   |   .gitignore
+|   |   
+|   +---Flutter
+|   |   |   Flutter-Debug.xcconfig
+|   |   |   Flutter-Release.xcconfig
+|   |   |   GeneratedPluginRegistrant.swift
+|   |   |   
+|   |   \---ephemeral
+|   |           Flutter-Generated.xcconfig
+|   |           flutter_export_environment.sh
+|   |           
+|   +---Runner
+|   |   |   AppDelegate.swift
+|   |   |   DebugProfile.entitlements
+|   |   |   Info.plist
+|   |   |   MainFlutterWindow.swift
+|   |   |   Release.entitlements
+|   |   |   
+|   |   +---Assets.xcassets
+|   |   |   \---AppIcon.appiconset
+|   |   |           app_icon_1024.png
+|   |   |           app_icon_128.png
+|   |   |           app_icon_16.png
+|   |   |           app_icon_256.png
+|   |   |           app_icon_32.png
+|   |   |           app_icon_512.png
+|   |   |           app_icon_64.png
+|   |   |           Contents.json
+|   |   |           
+|   |   +---Base.lproj
+|   |   |       MainMenu.xib
+|   |   |       
+|   |   \---Configs
+|   |           AppInfo.xcconfig
+|   |           Debug.xcconfig
+|   |           Release.xcconfig
+|   |           Warnings.xcconfig
+|   |           
+|   +---Runner.xcodeproj
+|   |   |   project.pbxproj
+|   |   |   
+|   |   +---project.xcworkspace
+|   |   |   \---xcshareddata
+|   |   |           IDEWorkspaceChecks.plist
+|   |   |           
+|   |   \---xcshareddata
+|   |       \---xcschemes
+|   |               Runner.xcscheme
+|   |               
+|   +---Runner.xcworkspace
+|   |   |   contents.xcworkspacedata
+|   |   |   
+|   |   \---xcshareddata
+|   |           IDEWorkspaceChecks.plist
+|   |           
+|   \---RunnerTests
+|           RunnerTests.swift
+|           
++---test
+|       widget_test.dart
+|       
++---web
+|   |   favicon.png
+|   |   index.html
+|   |   manifest.json
+|   |   
+|   \---icons
+|           Icon-192.png
+|           Icon-512.png
+|           Icon-maskable-192.png
+|           Icon-maskable-512.png
+|           
+\---windows
+    |   .gitignore
+    |   CMakeLists.txt
+    |   
+    +---flutter
+    |       CMakeLists.txt
+    |       generated_plugins.cmake
+    |       generated_plugin_registrant.cc
+    |       generated_plugin_registrant.h
+    |       
+    \---runner
+        |   CMakeLists.txt
+        |   flutter_window.cpp
+        |   flutter_window.h
+        |   main.cpp
+        |   resource.h
+        |   runner.exe.manifest
+        |   Runner.rc
+        |   utils.cpp
+        |   utils.h
+        |   win32_window.cpp
+        |   win32_window.h
+        |   
+        \---resources
+                app_icon.ico
+                

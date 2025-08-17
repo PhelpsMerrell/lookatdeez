@@ -1,0 +1,405 @@
+import 'package:flutter/material.dart';
+import '../models/playlist.dart';
+import '../models/video_item.dart';
+import '../services/api_service.dart';
+import '../widgets/video_card.dart';
+import '../widgets/friend_share_sheet.dart';
+
+class PlaylistEditorPage extends StatefulWidget {
+  final Playlist playlist;
+  final Function(Playlist) onPlaylistUpdated;
+
+  const PlaylistEditorPage({
+    super.key,
+    required this.playlist,
+    required this.onPlaylistUpdated,
+  });
+
+  @override
+  State<PlaylistEditorPage> createState() => _PlaylistEditorPageState();
+}
+
+class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
+  late Playlist playlist;
+  final titleController = TextEditingController();
+  final urlController = TextEditingController();
+  bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    playlist = Playlist(
+      id: widget.playlist.id,
+      name: widget.playlist.name,
+      videos: List.from(widget.playlist.videos),
+    );
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    urlController.dispose();
+    super.dispose();
+  }
+
+  Future<void> addVideo() async {
+    titleController.clear();
+    urlController.clear();
+
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Video'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(
+                labelText: 'Title',
+                hintText: 'Enter video title',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: urlController,
+              decoration: const InputDecoration(
+                labelText: 'URL',
+                hintText: 'https://...',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.url,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop({
+              'title': titleController.text,
+              'url': urlController.text,
+            }),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null &&
+        result['title']!.isNotEmpty &&
+        result['url']!.isNotEmpty) {
+      
+      setState(() => isLoading = true);
+      
+      try {
+        // Call your actual API to add the item
+        final newVideo = await ApiService.addItemToPlaylist(
+          playlist.id,
+          result['title']!,
+          result['url']!,
+        );
+
+        setState(() {
+          playlist.videos.add(newVideo);
+          isLoading = false;
+        });
+
+        widget.onPlaylistUpdated(playlist);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Video added successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        setState(() => isLoading = false);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error adding video: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteVideo(int index) async {
+    final video = playlist.videos[index];
+    
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Video'),
+        content: Text('Remove "${video.title}" from this playlist?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => isLoading = true);
+      
+      try {
+        await ApiService.removeItemFromPlaylist(playlist.id, video.id);
+        
+        setState(() {
+          playlist.videos.removeAt(index);
+          isLoading = false;
+        });
+        
+        widget.onPlaylistUpdated(playlist);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Video removed successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        setState(() => isLoading = false);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error removing video: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _showShareSheet() {
+  // This shows the sheet; no need to wrap it in another showModalBottomSheet
+  showFriendShareSheet(context);
+}
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Theme.of(context).colorScheme.primaryContainer,
+              Theme.of(context).colorScheme.surface,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              CustomScrollView(
+                slivers: [
+                  // Header
+                  SliverToBoxAdapter(
+                    child: Container(
+                      margin: const EdgeInsets.all(16),
+                      child: Hero(
+                        tag: 'playlist-${playlist.id}',
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Top action bar
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      icon: const Icon(Icons.arrow_back_ios),
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: Theme.of(context)
+                                            .colorScheme
+                                            .primaryContainer
+                                            .withValues(alpha: 0.5),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    ElevatedButton.icon(
+                                      onPressed: isLoading ? null : addVideo,
+                                      icon: const Icon(Icons.add),
+                                      label: const Text('Add Video'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Theme.of(context).colorScheme.primary,
+                                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      onPressed: _showShareSheet,
+                                      icon: const Icon(Icons.share_rounded),
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: Theme.of(context)
+                                            .colorScheme
+                                            .primaryContainer
+                                            .withValues(alpha: 0.8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 24),
+                                
+                                // Playlist icon and info
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Icon(
+                                    Icons.play_circle_fill,
+                                    color: Theme.of(context).colorScheme.primary,
+                                    size: 40,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                
+                                Text(
+                                  playlist.name,
+                                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '${playlist.videos.length} videos',
+                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Video list or empty state
+                  if (playlist.videos.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.video_call_outlined,
+                              size: 80,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No videos yet',
+                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Add your first video to get started',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: addVideo,
+                              icon: const Icon(Icons.add),
+                              label: const Text('Add Video'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).colorScheme.primary,
+                                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.all(16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final video = playlist.videos[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: VideoCard(
+                                video: video,
+                                onDelete: () => _deleteVideo(index),
+                              ),
+                            );
+                          },
+                          childCount: playlist.videos.length,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              
+              // Loading overlay
+              if (isLoading)
+                Container(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
