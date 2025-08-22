@@ -75,8 +75,31 @@ class _LoginPageState extends State<LoginPage>
   }
 
 void _handleSubmit() async {
-  // Both login and signup now go through Azure B2C
-  _handleMicrosoftLogin();
+  if (_formKey.currentState!.validate()) {
+    setState(() => _isLoading = true);
+    
+    try {
+      if (_isLogin) {
+        // LOGIN: Just redirect to B2C signin
+        _handleMicrosoftLogin();
+      } else {
+        // SIGNUP: Could either redirect to B2C or create account directly
+        // For now, let's try B2C signup flow which allows new account creation
+        _handleMicrosoftLogin();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isLogin ? 'Login failed: $e' : 'Signup failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 }
 
   void _handleForgotPassword() {
@@ -410,7 +433,7 @@ void _handleSubmit() async {
                               ),
                               const SizedBox(height: 32),
 
-                              // Login/Signup Toggle (now both go to B2C)
+                              // Login/Signup Toggle
                               Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
@@ -472,27 +495,131 @@ void _handleSubmit() async {
                               ),
                               const SizedBox(height: 32),
 
-                              // Informational text
-                              Text(
-                                _isLogin 
-                                    ? 'Sign in to your existing account'
-                                    : 'Create a new account with Microsoft',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.white70,
-                                ),
-                                textAlign: TextAlign.center,
+                              // Form fields for user input
+                              _buildInputField(
+                                controller: _emailController,
+                                hintText: 'Email address',
+                                prefixIcon: Icons.email,
+                                keyboardType: TextInputType.emailAddress,
+                                validator: (value) {
+                                  if (value?.isEmpty ?? true) {
+                                    return 'Please enter your email';
+                                  }
+                                  if (!value!.contains('@')) {
+                                    return 'Please enter a valid email';
+                                  }
+                                  return null;
+                                },
                               ),
-                              const SizedBox(height: 32),
+
+                              if (!_isLogin)
+                                _buildInputField(
+                                  controller: _usernameController,
+                                  hintText: 'Display name',
+                                  prefixIcon: Icons.person,
+                                  validator: (value) {
+                                    if (value?.isEmpty ?? true) {
+                                      return 'Please enter a display name';
+                                    }
+                                    return null;
+                                  },
+                                ),
+
+                              _buildInputField(
+                                controller: _passwordController,
+                                hintText: 'Password',
+                                prefixIcon: Icons.lock,
+                                obscureText: _obscurePassword,
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                    color: Colors.cyan,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _obscurePassword = !_obscurePassword;
+                                    });
+                                  },
+                                ),
+                                validator: (value) {
+                                  if (value?.isEmpty ?? true) {
+                                    return 'Please enter a password';
+                                  }
+                                  if (!_isLogin && value!.length < 6) {
+                                    return 'Password must be at least 6 characters';
+                                  }
+                                  return null;
+                                },
+                              ),
+
+                              if (!_isLogin)
+                                _buildInputField(
+                                  controller: _confirmPasswordController,
+                                  hintText: 'Confirm password',
+                                  prefixIcon: Icons.lock_outline,
+                                  obscureText: _obscureConfirmPassword,
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                                      color: Colors.cyan,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _obscureConfirmPassword = !_obscureConfirmPassword;
+                                      });
+                                    },
+                                  ),
+                                  validator: (value) {
+                                    if (value?.isEmpty ?? true) {
+                                      return 'Please confirm your password';
+                                    }
+                                    if (value != _passwordController.text) {
+                                      return 'Passwords do not match';
+                                    }
+                                    return null;
+                                  },
+                                ),
+
+                              // Note about how authentication works
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                margin: const EdgeInsets.only(bottom: 24),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                                ),
+                                child: Text(
+                                  _isLogin 
+                                      ? 'You\'ll be securely authenticated through Microsoft'
+                                      : 'Your account will be created securely through Microsoft and stored in our system',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
 
                               // Main action button
                               Container(
                                 margin: const EdgeInsets.only(bottom: 24),
                                 child: ElevatedButton.icon(
-                                  onPressed: _handleSubmit,
-                                  icon: const Icon(Icons.business, color: Colors.white),
+                                  onPressed: _isLoading ? null : _handleSubmit,
+                                  icon: _isLoading 
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(Icons.arrow_forward, color: Colors.white),
                                   label: Text(
-                                    _isLogin ? 'Sign In with Microsoft' : 'Sign Up with Microsoft',
+                                    _isLoading 
+                                        ? 'Processing...'
+                                        : (_isLogin ? 'Sign In' : 'Create Account'),
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,

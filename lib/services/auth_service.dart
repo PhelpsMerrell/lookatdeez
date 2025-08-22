@@ -56,7 +56,10 @@ class AuthService {
   }
   
   static Future<void> _exchangeCodeForTokens(String code) async {
+    // Use B2C token endpoint
     final tokenUrl = '${AuthConfig.authority}/oauth2/v2.0/token';
+    
+    print('Exchanging code for tokens at: $tokenUrl');
     
     final body = {
       'client_id': AuthConfig.clientId,
@@ -66,6 +69,8 @@ class AuthService {
       'scope': AuthConfig.scopes.join(' '),
     };
     
+    print('Token exchange body: $body');
+    
     final response = await http.post(
       Uri.parse(tokenUrl),
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -73,6 +78,9 @@ class AuthService {
           .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
           .join('&'),
     );
+    
+    print('Token response status: ${response.statusCode}');
+    print('Token response body: ${response.body}');
     
     if (response.statusCode == 200) {
       final tokenData = json.decode(response.body);
@@ -90,11 +98,43 @@ class AuthService {
       }
       await prefs.setString(_tokenExpiryKey, expiryTime.toIso8601String());
       
-      final userInfo = await _fetchUserInfoFromGraph(accessToken);
+      // For B2C, we might need to get user info differently
+      Map<String, dynamic> userInfo;
+      try {
+        userInfo = await _fetchUserInfoFromGraph(accessToken);
+        print('Got user info from Graph: $userInfo');
+      } catch (e) {
+        print('Failed to get user info from Graph: $e');
+        // Try to extract from token
+        userInfo = _extractUserInfoFromToken(accessToken);
+        print('Extracted user info from token: $userInfo');
+      }
+      
       await _storeUserInfo(userInfo);
     } else {
       final errorData = json.decode(response.body);
       throw Exception('Token exchange failed: ${errorData['error']}');
+    }
+  }
+  
+  static Map<String, dynamic> _extractUserInfoFromToken(String accessToken) {
+    try {
+      final handler = JwtDecoder.decode(accessToken);
+      
+      return {
+        'id': handler['oid'] ?? handler['sub'] ?? 'unknown',
+        'displayName': handler['name'] ?? handler['given_name'] ?? 'User',
+        'mail': handler['emails']?.first ?? handler['email'] ?? 'no-email@example.com',
+        'userPrincipalName': handler['emails']?.first ?? handler['email'] ?? 'no-email@example.com',
+      };
+    } catch (e) {
+      print('Error extracting user info from token: $e');
+      return {
+        'id': 'unknown-${DateTime.now().millisecondsSinceEpoch}',
+        'displayName': 'User',
+        'mail': 'no-email@example.com',
+        'userPrincipalName': 'no-email@example.com',
+      };
     }
   }
   
