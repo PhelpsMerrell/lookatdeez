@@ -34,20 +34,21 @@ jobs:
            result-encoding: string
 
 
-          # 👇 ADD THESE STEPS (Flutter setup + build)
+      # ✅ 1) Install Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
 
+      # ✅ 2) Restore packages
       - name: Flutter pub get
         run: flutter pub get
-        working-directory: ${{ env.APP_LOCATION || '.' }}
+        working-directory: .
 
+      # ✅ 3) Build Flutter for web (outputs to build/web)
       - name: Flutter build web
-        run: flutter build web --release --dart-define=API_BASE=https://lookatdeez-functions.azurewebsites.net
-        working-directory: ${{ env.APP_LOCATION || '.' }}
-      # 👆 END OF ADDED STEPS
+        run: flutter build web --release
+        working-directory: .
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -72,4 +73,5 @@ jobs:
         uses: Azure/static-web-apps-deploy@v1
         with:
           action: "close"
+
 
