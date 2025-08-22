@@ -2,10 +2,10 @@ name: Azure Static Web Apps CI/CD
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   pull_request:
     types: [ opened, synchronize, reopened, closed ]
-    branches: [ main ]
+    branches: [ "main" ]
 
 jobs:
   build_and_deploy_job:
@@ -16,7 +16,8 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           submodules: true
           lfs: false
@@ -33,7 +34,7 @@ jobs:
             return await coredemo.getIDToken()
           result-encoding: string
 
-      # ✅ Flutter build (creates build/web)
+      # Build Flutter web → outputs to build/web
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -47,7 +48,14 @@ jobs:
         run: flutter build web --release
         working-directory: .
 
-      # ✅ Upload the already-built site; skip Oryx build
+      - name: Debug listing
+        run: |
+          echo "Repo root:" && ls -la
+          echo "build:" && ls -la build || true
+          echo "build/web:" && ls -la build/web || true
+        working-directory: .
+
+      # Upload the already-built site by pointing app_location to build/web
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -56,8 +64,7 @@ jobs:
           action: upload
           skip_app_build: true
           skip_api_build: true
-          app_location: .
-          app_artifact_location: build/web
+          app_location: build/web        # 👈 treat built folder as the app
           github_id_token: ${{ steps.idtoken.outputs.result }}
 
   close_pull_request_job:
