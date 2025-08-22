@@ -5,6 +5,7 @@ import '../models/playlist.dart';
 import '../models/video_item.dart';
 import '../models/friend.dart';
 import '../config/environment.dart';
+import 'auth_service.dart';
 
 // Custom exception for friend request specific errors
 class FriendRequestException implements Exception {
@@ -19,15 +20,22 @@ class ApiService {
   static String get baseUrl => Environment.apiBaseUrl;
   
   static Future<Map<String, String>> get _headers async {
-    // Get the logged-in user ID
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId') ?? 'test-user-123';
-    
-    return {
+    final headers = <String, String>{
       'Content-Type': 'application/json',
-      'x-user-id': userId, // Pass user ID in custom header (lowercase to match API)
-      // TODO: Add auth when ready: 'Authorization': 'Bearer $token',
     };
+    
+    // Try to get Microsoft auth token first
+    final bearerToken = await AuthService.getBearerToken();
+    if (bearerToken != null) {
+      headers['Authorization'] = bearerToken;
+    } else {
+      // Fallback to user ID header for development/testing
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId') ?? 'test-user-123';
+      headers['x-user-id'] = userId;
+    }
+    
+    return headers;
   }
 
    // Add user profile methods

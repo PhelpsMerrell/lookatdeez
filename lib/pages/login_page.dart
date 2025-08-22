@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lookatdeez/pages/playlist_menu_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -122,6 +123,21 @@ void _handleSubmit() async {
         const SnackBar(
           content: Text('Password reset link sent to your email'),
           backgroundColor: Colors.cyan,
+        ),
+      );
+    }
+  }
+
+  void _handleMicrosoftLogin() async {
+    try {
+      await AuthService.login();
+      // Login method will redirect to Microsoft, 
+      // and we'll return to the callback page
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Microsoft login failed: $e'),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -672,7 +688,7 @@ void _handleSubmit() async {
                               _buildSocialButton(
                                 text: 'Continue with Microsoft',
                                 icon: Icons.business,
-                                onPressed: () => _handleSocialLogin('Microsoft'),
+                                onPressed: _handleMicrosoftLogin,
                                 color: const Color(0xFF0078D4),
                               ),
                               _buildSocialButton(
