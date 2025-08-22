@@ -2,12 +2,10 @@ name: Azure Static Web Apps CI/CD
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   pull_request:
-    types: [opened, synchronize, reopened, closed]
-    branches:
-      - main
+    types: [ opened, synchronize, reopened, closed ]
+    branches: [ "main" ]
 
 jobs:
   build_and_deploy_job:
@@ -18,11 +16,13 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           submodules: true
           lfs: false
 
+      # (kept because your existing template used it)
       - name: Install OIDC Client from Core Package
         run: npm install @actions/core@1.6.0 @actions/http-client
 
@@ -35,33 +35,42 @@ jobs:
             return await coredemo.getIDToken()
           result-encoding: string
 
-      # ✅ 1) Install Flutter
+      # --------- Build Flutter Web ----------
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
+          flutter-version: '3.x'   # or pin to your exact version
 
-      # ✅ 2) Restore packages
       - name: Flutter pub get
         run: flutter pub get
         working-directory: .
 
-      # ✅ 3) Build Flutter for web (outputs to build/web)
       - name: Flutter build web
         run: flutter build web --release
         working-directory: .
 
-      # ✅ 4) Deploy to Azure
+      # (optional) quick sanity check so you can see index.html exists
+      - name: Debug listing
+        run: |
+          ls -la
+          ls -la build
+          ls -la build/web
+        working-directory: .
+
+      # --------- Deploy to Azure SWA (upload prebuilt site) ----------
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_AGREEABLE_MUD_0BDD85A1E }}
           action: upload
+          # we already built; skip Oryx build
           skip_app_build: true
           skip_api_build: true
+          # path to your source (root of repo)
           app_location: .
-          output_location: build/web
+          # path to built site (Flutter output)
+          app_artifact_location: build/web
           github_id_token: ${{ steps.idtoken.outputs.result }}
 
   close_pull_request_job:
