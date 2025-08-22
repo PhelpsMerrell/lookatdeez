@@ -1,1 +1,193 @@
-import 'dart:convert';\nimport 'dart:html' as html;\nimport 'package:msal_js/msal_js.dart';\nimport 'package:jwt_decoder/jwt_decoder.dart';\nimport 'package:shared_preferences/shared_preferences.dart';\nimport '../config/auth_config.dart';\n\nclass AuthService {\n  static PublicClientApplication? _msalInstance;\n  static AuthenticationResult? _currentAuth;\n  \n  // Initialize MSAL\n  static Future<void> initialize() async {\n    try {\n      final config = Configuration(\n        auth: BrowserAuthOptions(\n          clientId: AuthConfig.clientId,\n          authority: AuthConfig.authority,\n          redirectUri: AuthConfig.currentRedirectUri,\n        ),\n        cache: CacheOptions(\n          cacheLocation: BrowserCacheLocation.localStorage,\n          storeAuthStateInCookie: false,\n        ),\n      );\n      \n      _msalInstance = await PublicClientApplication.createPublicClientApplication(config);\n      \n      // Handle redirect callback if we're returning from Microsoft login\n      await _handleRedirectPromise();\n    } catch (e) {\n      print('MSAL initialization error: $e');\n      rethrow;\n    }\n  }\n  \n  // Handle redirect after Microsoft login\n  static Future<void> _handleRedirectPromise() async {\n    try {\n      final response = await _msalInstance!.handleRedirectPromise();\n      if (response != null) {\n        _currentAuth = response;\n        await _saveUserInfo(response);\n      }\n    } catch (e) {\n      print('Redirect handling error: $e');\n    }\n  }\n  \n  // Login with Microsoft\n  static Future<AuthenticationResult?> login() async {\n    try {\n      final loginRequest = RedirectRequest(\n        scopes: AuthConfig.scopes,\n        redirectUri: AuthConfig.currentRedirectUri,\n      );\n      \n      // This will redirect to Microsoft login\n      await _msalInstance!.loginRedirect(loginRequest);\n      return null; // Will complete after redirect\n    } catch (e) {\n      print('Login error: $e');\n      rethrow;\n    }\n  }\n  \n  // Get access token (for API calls)\n  static Future<String?> getAccessToken() async {\n    try {\n      if (_currentAuth == null) {\n        // Try to get account from cache\n        final accounts = await _msalInstance!.getAllAccounts();\n        if (accounts.isEmpty) return null;\n        \n        final account = accounts.first;\n        final silentRequest = SilentRequest(\n          scopes: AuthConfig.scopes,\n          account: account,\n        );\n        \n        _currentAuth = await _msalInstance!.acquireTokenSilent(silentRequest);\n      }\n      \n      return _currentAuth?.accessToken;\n    } catch (e) {\n      print('Token acquisition error: $e');\n      // If silent acquisition fails, user needs to login again\n      return null;\n    }\n  }\n  \n  // Get user info from token\n  static Future<Map<String, dynamic>?> getUserInfo() async {\n    try {\n      final token = await getAccessToken();\n      if (token == null) return null;\n      \n      // Decode the JWT token to get user info\n      final decodedToken = JwtDecoder.decode(token);\n      \n      return {\n        'id': decodedToken['oid'] ?? decodedToken['sub'],\n        'email': decodedToken['email'] ?? decodedToken['preferred_username'],\n        'name': decodedToken['name'],\n        'given_name': decodedToken['given_name'],\n        'family_name': decodedToken['family_name'],\n      };\n    } catch (e) {\n      print('User info error: $e');\n      return null;\n    }\n  }\n  \n  // Save user info to local storage\n  static Future<void> _saveUserInfo(AuthenticationResult auth) async {\n    try {\n      final prefs = await SharedPreferences.getInstance();\n      \n      // Save the access token for API calls\n      await prefs.setString('access_token', auth.accessToken ?? '');\n      \n      // Decode and save user info\n      if (auth.idToken != null) {\n        final decodedToken = JwtDecoder.decode(auth.idToken!);\n        await prefs.setString('userId', decodedToken['oid'] ?? decodedToken['sub'] ?? '');\n        await prefs.setString('userEmail', decodedToken['email'] ?? decodedToken['preferred_username'] ?? '');\n        await prefs.setString('userName', decodedToken['name'] ?? '');\n      }\n    } catch (e) {\n      print('Save user info error: $e');\n    }\n  }\n  \n  // Check if user is logged in\n  static Future<bool> isLoggedIn() async {\n    try {\n      final accounts = await _msalInstance!.getAllAccounts();\n      return accounts.isNotEmpty;\n    } catch (e) {\n      return false;\n    }\n  }\n  \n  // Logout\n  static Future<void> logout() async {\n    try {\n      final accounts = await _msalInstance!.getAllAccounts();\n      if (accounts.isNotEmpty) {\n        final logoutRequest = EndSessionRequest(\n          account: accounts.first,\n          postLogoutRedirectUri: AuthConfig.currentRedirectUri,\n        );\n        await _msalInstance!.logoutRedirect(logoutRequest);\n      }\n      \n      // Clear local storage\n      final prefs = await SharedPreferences.getInstance();\n      await prefs.clear();\n      _currentAuth = null;\n    } catch (e) {\n      print('Logout error: $e');\n    }\n  }\n  \n  // Get stored user ID for API calls\n  static Future<String?> getUserId() async {\n    final prefs = await SharedPreferences.getInstance();\n    return prefs.getString('userId');\n  }\n  \n  // Get bearer token for API authorization\n  static Future<String?> getBearerToken() async {\n    final token = await getAccessToken();\n    return token != null ? 'Bearer $token' : null;\n  }\n}\n
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../config/auth_config.dart';
+
+class AuthService {
+  static bool _isInitialized = false;
+  
+  // Initialize auth service
+  static Future<void> initialize() async {
+    try {
+      _isInitialized = true;
+      print('Auth service initialized');
+      
+      // Check if we're returning from Microsoft auth
+      await _handleAuthCallback();
+    } catch (e) {
+      print('Auth initialization error: $e');
+    }
+  }
+  
+  // Handle auth callback from Microsoft
+  static Future<void> _handleAuthCallback() async {
+    try {
+      // This would normally parse URL parameters for auth code
+      // For now, we'll keep it simple and let the redirect handle it
+      final currentUrl = Uri.base.toString();
+      print('Current URL: $currentUrl');
+      
+      if (currentUrl.contains('/auth/callback')) {
+        // We're in the callback - this means auth completed
+        // In a real implementation, we'd parse the auth code here
+        print('Auth callback detected');
+      }
+    } catch (e) {
+      print('Callback handling error: $e');
+    }
+  }
+  
+  // Login with Microsoft (redirect approach)
+  static Future<void> login() async {
+    try {
+      // Create Microsoft OAuth URL
+      final authUrl = _buildAuthUrl();
+      
+      // Redirect to Microsoft login
+      if (await canLaunchUrl(Uri.parse(authUrl))) {
+        await launchUrl(
+          Uri.parse(authUrl),
+          mode: LaunchMode.platformDefault,
+        );
+      } else {
+        throw Exception('Could not launch Microsoft login');
+      }
+    } catch (e) {
+      print('Login error: $e');
+      rethrow;
+    }
+  }
+  
+  // Build Microsoft OAuth URL
+  static String _buildAuthUrl() {
+    final params = {
+      'client_id': AuthConfig.clientId,
+      'response_type': 'code',
+      'redirect_uri': AuthConfig.currentRedirectUri,
+      'scope': AuthConfig.scopes.join(' '),
+      'response_mode': 'query',
+      'state': _generateState(),
+    };
+    
+    final queryString = params.entries
+        .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+        .join('&');
+    
+    return '${AuthConfig.authority}/oauth2/v2.0/authorize?$queryString';
+  }
+  
+  // Generate random state for security
+  static String _generateState() {
+    final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+    return 'state_$timestamp';
+  }
+  
+  // For now, return null - in real implementation this would exchange auth code for token
+  static Future<String?> getAccessToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('access_token');
+    } catch (e) {
+      print('Token acquisition error: $e');
+      return null;
+    }
+  }
+  
+  // Get user info (mock for now)
+  static Future<Map<String, dynamic>?> getUserInfo() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+      final userEmail = prefs.getString('userEmail');
+      final userName = prefs.getString('userName');
+      
+      if (userId != null) {
+        return {
+          'id': userId,
+          'email': userEmail,
+          'name': userName,
+        };
+      }
+      
+      return null;
+    } catch (e) {
+      print('User info error: $e');
+      return null;
+    }
+  }
+  
+  // Save user info (for testing)
+  static Future<void> saveUserInfo(Map<String, dynamic> userInfo) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userId', userInfo['id'] ?? '');
+      await prefs.setString('userEmail', userInfo['email'] ?? '');
+      await prefs.setString('userName', userInfo['name'] ?? '');
+      await prefs.setString('access_token', userInfo['access_token'] ?? '');
+    } catch (e) {
+      print('Save user info error: $e');
+    }
+  }
+  
+  // Check if user is logged in
+  static Future<bool> isLoggedIn() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+      return userId != null && userId.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+  
+  // Logout
+  static Future<void> logout() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      
+      // Redirect to Microsoft logout
+      final logoutUrl = '${AuthConfig.authority}/oauth2/v2.0/logout?post_logout_redirect_uri=${Uri.encodeComponent(AuthConfig.currentRedirectUri)}';
+      
+      if (await canLaunchUrl(Uri.parse(logoutUrl))) {
+        await launchUrl(
+          Uri.parse(logoutUrl),
+          mode: LaunchMode.platformDefault,
+        );
+      }
+    } catch (e) {
+      print('Logout error: $e');
+    }
+  }
+  
+  // Get stored user ID for API calls
+  static Future<String?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('userId');
+  }
+  
+  // Get bearer token for API authorization
+  static Future<String?> getBearerToken() async {
+    final token = await getAccessToken();
+    return token != null ? 'Bearer $token' : null;
+  }
+  
+  // Mock login for testing (simulates successful Microsoft auth)
+  static Future<void> mockMicrosoftLogin() async {
+    try {
+      // Simulate successful Microsoft login
+      final mockUserInfo = {
+        'id': 'microsoft-user-${DateTime.now().millisecondsSinceEpoch}',
+        'email': 'user@outlook.com',
+        'name': 'Microsoft User',
+        'access_token': 'mock-access-token-${DateTime.now().millisecondsSinceEpoch}',
+      };
+      
+      await saveUserInfo(mockUserInfo);
+      print('Mock Microsoft login successful');
+    } catch (e) {
+      print('Mock login error: $e');
+      rethrow;
+    }
+  }
+}

@@ -1,1 +1,56 @@
-import 'package:flutter/material.dart';\nimport '../services/auth_service.dart';\n\nclass AuthCallbackPage extends StatefulWidget {\n  const AuthCallbackPage({super.key});\n\n  @override\n  State<AuthCallbackPage> createState() => _AuthCallbackPageState();\n}\n\nclass _AuthCallbackPageState extends State<AuthCallbackPage> {\n  @override\n  void initState() {\n    super.initState();\n    _handleCallback();\n  }\n\n  Future<void> _handleCallback() async {\n    try {\n      // The AuthService.initialize() will handle the redirect response\n      await AuthService.initialize();\n      \n      // Check if login was successful\n      final isLoggedIn = await AuthService.isLoggedIn();\n      \n      if (isLoggedIn && mounted) {\n        // Navigate back to main app\n        Navigator.of(context).pushReplacementNamed('/');\n      } else {\n        // Login failed, redirect to login page\n        Navigator.of(context).pushReplacementNamed('/login');\n      }\n    } catch (e) {\n      print('Auth callback error: $e');\n      if (mounted) {\n        Navigator.of(context).pushReplacementNamed('/login');\n      }\n    }\n  }\n\n  @override\n  Widget build(BuildContext context) {\n    return const Scaffold(\n      body: Center(\n        child: Column(\n          mainAxisAlignment: MainAxisAlignment.center,\n          children: [\n            CircularProgressIndicator(),\n            SizedBox(height: 16),\n            Text('Completing sign in...'),\n          ],\n        ),\n      ),\n    );\n  }\n}\n
+import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
+
+class AuthCallbackPage extends StatefulWidget {
+  const AuthCallbackPage({super.key});
+
+  @override
+  State<AuthCallbackPage> createState() => _AuthCallbackPageState();
+}
+
+class _AuthCallbackPageState extends State<AuthCallbackPage> {
+  @override
+  void initState() {
+    super.initState();
+    _handleCallback();
+  }
+
+  Future<void> _handleCallback() async {
+    try {
+      // The AuthService.initialize() will handle the redirect response
+      await AuthService.initialize();
+      
+      // Check if login was successful
+      final isLoggedIn = await AuthService.isLoggedIn();
+      
+      if (isLoggedIn && mounted) {
+        // Navigate back to main app
+        Navigator.of(context).pushReplacementNamed('/');
+      } else {
+        // Login failed, redirect to login page
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    } catch (e) {
+      print('Auth callback error: $e');
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Completing sign in...'),
+          ],
+        ),
+      ),
+    );
+  }
+}

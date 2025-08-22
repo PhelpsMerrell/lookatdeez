@@ -1,7 +1,18 @@
 import 'package:flutter/material.dart';
 import 'pages/login_page.dart';
+import 'pages/auth_callback_page.dart';
+import 'services/auth_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Microsoft Auth
+  try {
+    await AuthService.initialize();
+  } catch (e) {
+    print('Auth initialization failed: $e');
+  }
+  
   runApp(const PlaylistApp());
 }
 
@@ -16,7 +27,12 @@ class PlaylistApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const LoginPage(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const LoginPage(),
+        '/auth/callback': (context) => const AuthCallbackPage(),
+        '/login': (context) => const LoginPage(),
+      },
       // Enable this temporarily to debug hero animations
       debugShowCheckedModeBanner: false,
     );

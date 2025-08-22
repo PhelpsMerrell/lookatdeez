@@ -130,9 +130,15 @@ void _handleSubmit() async {
 
   void _handleMicrosoftLogin() async {
     try {
-      await AuthService.login();
-      // Login method will redirect to Microsoft, 
-      // and we'll return to the callback page
+      // For testing, use mock login
+      // In production, this would redirect to Microsoft
+      await AuthService.mockMicrosoftLogin();
+      
+      // Navigate to main app
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => PlaylistMenuPage()),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
