@@ -208,6 +208,67 @@ class ApiService {
     }
   }
 
+  // ==== USER MANAGEMENT METHODS ====
+  
+  // Create a new user account
+  static Future<Map<String, dynamic>> createUser(String email, String displayName) async {
+    try {
+      print('Creating user via API: email=$email, displayName=$displayName');
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/users'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+          'displayName': displayName,
+        }),
+      );
+      
+      print('Create user response: ${response.statusCode}');
+      print('Response body: ${response.body}');
+      
+      if (response.statusCode == 201) {
+        return json.decode(response.body);
+      } else if (response.statusCode == 409) {
+        throw Exception('A user with this email already exists');
+      } else {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['error'] ?? 'Failed to create user');
+      }
+    } catch (e) {
+      print('Error creating user: $e');
+      rethrow;
+    }
+  }
+
+  // Search for a user by email (for login)
+  static Future<Map<String, dynamic>?> findUserByEmail(String email) async {
+    try {
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'x-user-id': 'temp-search-user', // Temporary for search
+      };
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/search?q=${Uri.encodeComponent(email)}'),
+        headers: headers,
+      );
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> users = json.decode(response.body);
+        final user = users.firstWhere(
+          (u) => u['email'].toLowerCase() == email.toLowerCase(),
+          orElse: () => null,
+        );
+        return user;
+      }
+      return null;
+    } catch (e) {
+      print('Error finding user: $e');
+      return null;
+    }
+  }
+
   // ==== FRIEND MANAGEMENT METHODS ====
   
   // Get user's friends list

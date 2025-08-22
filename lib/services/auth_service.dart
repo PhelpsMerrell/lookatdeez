@@ -230,8 +230,11 @@ class AuthService {
       
       final email = userInfo['mail'] ?? userInfo['userPrincipalName'];
       final displayName = userInfo['displayName'];
+      final microsoftUserId = userInfo['id'];
       
-      if (email == null || displayName == null) return;
+      if (email == null || displayName == null || microsoftUserId == null) return;
+      
+      print('Ensuring Microsoft user exists: $email, $displayName, $microsoftUserId');
       
       final apiUrl = Uri.base.host == 'localhost' 
           ? 'http://localhost:7071/api'
@@ -248,8 +251,65 @@ class AuthService {
           'displayName': displayName,
         }),
       );
+      
+      print('Ensure user response: ${response.statusCode}');
+      print('Response body: ${response.body}');
+      
+      if (response.statusCode == 201) {
+        // User created successfully
+        final userData = json.decode(response.body);
+        print('Microsoft user created in database with ID: ${userData['id']}');
+        
+        // Store the database user ID (not the Microsoft ID)
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('userId', userData['id']);
+        await prefs.setString('email', userData['email']);
+        await prefs.setString('displayName', userData['displayName']);
+        
+      } else if (response.statusCode == 409) {
+        // User already exists, find them
+        print('Microsoft user already exists, finding them...');
+        await _findAndStoreExistingUser(email);
+        
+      } else {
+        print('Failed to create/find user: ${response.statusCode} - ${response.body}');
+      }
     } catch (e) {
       print('Error ensuring user exists: $e');
+    }
+  }
+  
+  static Future<void> _findAndStoreExistingUser(String email) async {
+    try {
+      final apiUrl = Uri.base.host == 'localhost' 
+          ? 'http://localhost:7071/api'
+          : 'https://lookatdeez-functions.azurewebsites.net/api';
+      
+      final response = await http.get(
+        Uri.parse('$apiUrl/users/search?q=${Uri.encodeComponent(email)}'),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': 'temp-search-user',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> users = json.decode(response.body);
+        final user = users.firstWhere(
+          (u) => u['email'].toLowerCase() == email.toLowerCase(),
+          orElse: () => null,
+        );
+        
+        if (user != null) {
+          print('Found existing user: ${user['id']}');
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('userId', user['id']);
+          await prefs.setString('email', user['email']);
+          await prefs.setString('displayName', user['displayName']);
+        }
+      }
+    } catch (e) {
+      print('Error finding existing user: $e');
     }
   }
 }

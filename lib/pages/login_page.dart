@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:lookatdeez/pages/playlist_menu_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../config/environment.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -17,6 +21,7 @@ class _LoginPageState extends State<LoginPage>
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _showForgotPassword = false;
+  bool _isLoading = false;
   
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
@@ -39,6 +44,23 @@ class _LoginPageState extends State<LoginPage>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     )..forward();
+    
+    // Check if already logged in via Microsoft
+    _checkExistingAuth();
+  }
+  
+  Future<void> _checkExistingAuth() async {
+    try {
+      final isLoggedIn = await AuthService.isLoggedIn();
+      if (isLoggedIn && mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const PlaylistMenuPage()),
+        );
+      }
+    } catch (e) {
+      print('Error checking existing auth: $e');
+    }
   }
   
   @override
@@ -53,62 +75,8 @@ class _LoginPageState extends State<LoginPage>
   }
 
 void _handleSubmit() async {
-  if (_formKey.currentState!.validate()) {
-    try {
-      // Map usernames to actual user IDs from your database
-      final Map<String, Map<String, String>> testUsers = {
-        'test': {
-          'userId': '2279ff79-74c9-4365-bd68-b0ab269c10af', // Replace with real ID
-          'email': 'test@example.com',
-          'displayName': 'Test User'
-        },
-        'alice': {
-          'userId': 'c31fe476-0699-44cb-8755-6b8629305ead', // Replace with real ID  
-          'email': 'alice@example.com',
-          'displayName': 'Alice Smith'
-        },
-        'bob': {
-          'userId': 'de7003dc-6474-4f2b-8de9-23554ed605cc', // Replace with real ID
-          'email': 'bob@example.com', 
-          'displayName': 'Bob Jones'
-        },
-      };
-      print('DEBUG: Available users: $testUsers');
-      String username = _usernameController.text.toLowerCase();
-      
-      if (testUsers.containsKey(username)) {
-        final userInfo = testUsers[username]!;
-        
-        // Store user info locally
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('userId', userInfo['userId']!);
-        await prefs.setString('username', username);
-        await prefs.setString('email', userInfo['email']!);
-        await prefs.setString('displayName', userInfo['displayName']!);
-        
-        print('Logged in as: $username (ID: ${userInfo['userId']})');
-        
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => PlaylistMenuPage()),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Unknown user. Try: test, alice, or bob'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Login failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
+  // Both login and signup now go through Azure B2C
+  _handleMicrosoftLogin();
 }
 
   void _handleForgotPassword() {
@@ -442,7 +410,7 @@ void _handleSubmit() async {
                               ),
                               const SizedBox(height: 32),
 
-                              // Toggle buttons
+                              // Login/Signup Toggle (now both go to B2C)
                               Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
@@ -465,7 +433,7 @@ void _handleSubmit() async {
                                             borderRadius: BorderRadius.circular(12),
                                           ),
                                           child: Text(
-                                            'Login',
+                                            'Sign In',
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
                                               color: _isLogin ? Colors.white : Colors.white60,
@@ -504,121 +472,27 @@ void _handleSubmit() async {
                               ),
                               const SizedBox(height: 32),
 
-                              // Form fields
-                              _buildInputField(
-                                controller: _usernameController,
-                                hintText: _isLogin ? 'Username or email' : 'Username',
-                                prefixIcon: Icons.person,
-                                validator: (value) {
-                                  if (value?.isEmpty ?? true) {
-                                    return 'Please enter your ${_isLogin ? 'username or email' : 'username'}';
-                                  }
-                                  return null;
-                                },
+                              // Informational text
+                              Text(
+                                _isLogin 
+                                    ? 'Sign in to your existing account'
+                                    : 'Create a new account with Microsoft',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white70,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-
-                              if (!_isLogin)
-                                _buildInputField(
-                                  controller: _emailController,
-                                  hintText: 'Email address',
-                                  prefixIcon: Icons.email,
-                                  keyboardType: TextInputType.emailAddress,
-                                  validator: (value) {
-                                    if (value?.isEmpty ?? true) {
-                                      return 'Please enter your email';
-                                    }
-                                    if (!value!.contains('@')) {
-                                      return 'Please enter a valid email';
-                                    }
-                                    return null;
-                                  },
-                                ),
-
-                              _buildInputField(
-                                controller: _passwordController,
-                                hintText: 'Password',
-                                prefixIcon: Icons.lock,
-                                obscureText: _obscurePassword,
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                                    color: Colors.cyan,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _obscurePassword = !_obscurePassword;
-                                    });
-                                  },
-                                ),
-                                validator: (value) {
-                                  if (value?.isEmpty ?? true) {
-                                    return 'Please enter your password';
-                                  }
-                                  if (!_isLogin && value!.length < 6) {
-                                    return 'Password must be at least 6 characters';
-                                  }
-                                  return null;
-                                },
-                              ),
-
-                              if (!_isLogin)
-                                _buildInputField(
-                                  controller: _confirmPasswordController,
-                                  hintText: 'Confirm password',
-                                  prefixIcon: Icons.lock_outline,
-                                  obscureText: _obscureConfirmPassword,
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
-                                      color: Colors.cyan,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _obscureConfirmPassword = !_obscureConfirmPassword;
-                                      });
-                                    },
-                                  ),
-                                  validator: (value) {
-                                    if (value?.isEmpty ?? true) {
-                                      return 'Please confirm your password';
-                                    }
-                                    if (value != _passwordController.text) {
-                                      return 'Passwords do not match';
-                                    }
-                                    return null;
-                                  },
-                                ),
-
-                              // Forgot password (only show on login)
-                              if (_isLogin)
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        _showForgotPassword = true;
-                                      });
-                                    },
-                                    child: const Text(
-                                      'Forgot Password?',
-                                      style: TextStyle(
-                                        color: Colors.cyan,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 32),
 
                               // Main action button
                               Container(
                                 margin: const EdgeInsets.only(bottom: 24),
                                 child: ElevatedButton.icon(
                                   onPressed: _handleSubmit,
-                                  icon: const Icon(Icons.arrow_forward, color: Colors.white),
+                                  icon: const Icon(Icons.business, color: Colors.white),
                                   label: Text(
-                                    _isLogin ? 'Sign In' : 'Create Account',
+                                    _isLogin ? 'Sign In with Microsoft' : 'Sign Up with Microsoft',
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
@@ -641,60 +515,15 @@ void _handleSubmit() async {
                                 ),
                               ),
 
-                              // Divider
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      height: 1,
-                                      color: Colors.white.withValues(alpha: 0.3),
-                                    ),
-                                  ),
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 16),
-                                    child: Text(
-                                      'OR',
-                                      style: TextStyle(
-                                        color: Colors.white60,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Container(
-                                      height: 1,
-                                      color: Colors.white.withValues(alpha: 0.3),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              // Optional: Add a note about other providers
                               const SizedBox(height: 24),
-
-                              // Social login buttons
-                              _buildSocialButton(
-                                text: 'Continue with Google',
-                                icon: Icons.g_mobiledata,
-                                onPressed: () => _handleSocialLogin('Google'),
-                                color: const Color(0xFF4285F4),
-                              ),
-                              _buildSocialButton(
-                                text: 'Continue with Apple',
-                                icon: Icons.apple,
-                                onPressed: () => _handleSocialLogin('Apple'),
-                                color: Colors.black87,
-                              ),
-                              _buildSocialButton(
-                                text: 'Continue with Microsoft',
-                                icon: Icons.business,
-                                onPressed: _handleMicrosoftLogin,
-                                color: const Color(0xFF0078D4),
-                              ),
-                              _buildSocialButton(
-                                text: 'Continue with Facebook',
-                                icon: Icons.facebook,
-                                onPressed: () => _handleSocialLogin('Facebook'),
-                                color: const Color(0xFF1877F2),
+                              const Text(
+                                'More sign-in options coming soon',
+                                style: TextStyle(
+                                  color: Colors.white60,
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ],
                           ),
