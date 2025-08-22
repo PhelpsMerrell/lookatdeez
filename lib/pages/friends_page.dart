@@ -308,17 +308,25 @@ class _FriendsPageState extends State<FriendsPage> with TickerProviderStateMixin
   Future<void> _respondToRequest(FriendRequest request, FriendRequestStatus status) async {
     try {
       await ApiService.updateFriendRequest(request.id, status);
-      _loadData(); // Refresh the data
+      await _loadData(); // Refresh the data
+      
       if (mounted) {
         final action = status == FriendRequestStatus.accepted ? 'accepted' : 'declined';
+        final name = request.fromUserDisplayName.isNotEmpty ? request.fromUserDisplayName : 'Friend request';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Friend request $action')),
+          SnackBar(
+            content: Text('$name $action'),
+            backgroundColor: status == FriendRequestStatus.accepted ? Colors.green : Colors.orange,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error responding to request: $e')),
+          SnackBar(
+            content: Text('Error responding to request: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

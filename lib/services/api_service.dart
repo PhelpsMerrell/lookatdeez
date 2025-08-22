@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/playlist.dart';
 import '../models/video_item.dart';
 import '../models/friend.dart';
+import '../config/environment.dart';
 
 // Custom exception for friend request specific errors
 class FriendRequestException implements Exception {
@@ -15,7 +16,7 @@ class FriendRequestException implements Exception {
 }
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:7071/api';
+  static String get baseUrl => Environment.apiBaseUrl;
   
   static Future<Map<String, String>> get _headers async {
     // Get the logged-in user ID
@@ -275,15 +276,39 @@ class ApiService {
   static Future<FriendRequestsEnvelope> getFriendRequests() async {
     try {
       final headers = await _headers;
+      
       final response = await http.get(
         Uri.parse('$baseUrl/friend-requests'),
         headers: headers,
       );
       
+      print('Friend requests response status: ${response.statusCode}');
+      print('Friend requests response body: ${response.body}');
+      
       if (response.statusCode == 200) {
-        return FriendRequestsEnvelope.fromJson(json.decode(response.body));
+        try {
+          final data = json.decode(response.body);
+          print('Parsed friend requests data type: ${data.runtimeType}');
+          print('Data keys: ${data.keys}');
+          
+          if (data['Sent'] != null) {
+            print('Sent type: ${data['Sent'].runtimeType}, length: ${data['Sent'].length}');
+          }
+          if (data['Received'] != null) {
+            print('Received type: ${data['Received'].runtimeType}, length: ${data['Received'].length}');
+          }
+          
+          final envelope = FriendRequestsEnvelope.fromJson(data);
+          print('Successfully created envelope - Sent: ${envelope.sent.length}, Received: ${envelope.received.length}');
+          
+          return envelope;
+        } catch (parseError) {
+          print('JSON parsing error: $parseError');
+          print('Raw response: ${response.body}');
+          rethrow;
+        }
       } else {
-        throw Exception('Failed to load friend requests: ${response.statusCode}');
+        throw Exception('Failed to load friend requests: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Get friend requests error: $e');
@@ -306,7 +331,7 @@ class ApiService {
       if (response.statusCode == 200) {
         return FriendRequest.fromJson(json.decode(response.body));
       } else {
-        throw Exception('Failed to update friend request: ${response.statusCode}');
+        throw Exception('Failed to update friend request: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Update friend request error: $e');

@@ -122,13 +122,27 @@ class FriendRequestsEnvelope {
   });
 
   factory FriendRequestsEnvelope.fromJson(Map<String, dynamic> json) {
+    // Handle Sent requests
+    List<FriendRequest> sentRequests = [];
+    final sentJson = json['Sent'] ?? json['sent'];
+    if (sentJson != null && sentJson is List) {
+      sentRequests = sentJson
+          .map((item) => FriendRequest.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
+    // Handle Received requests
+    List<FriendRequest> receivedRequests = [];
+    final receivedJson = json['Received'] ?? json['received'];
+    if (receivedJson != null && receivedJson is List) {
+      receivedRequests = receivedJson
+          .map((item) => FriendRequest.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
     return FriendRequestsEnvelope(
-      sent: (json['Sent'] ?? json['sent'] as List<dynamic>?)
-          ?.map((item) => FriendRequest.fromJson(item))
-          .toList() ?? [],
-      received: (json['Received'] ?? json['received'] as List<dynamic>?)
-          ?.map((item) => FriendRequest.fromJson(item))
-          .toList() ?? [],
+      sent: sentRequests,
+      received: receivedRequests,
     );
   }
 }
