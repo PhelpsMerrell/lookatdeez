@@ -2,10 +2,12 @@ name: Azure Static Web Apps CI/CD
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    types: [ opened, synchronize, reopened, closed ]
-    branches: [ main ]
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - main
 
 jobs:
   build_and_deploy_job:
@@ -16,7 +18,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
         with:
           submodules: true
           lfs: false
@@ -33,21 +35,23 @@ jobs:
             return await coredemo.getIDToken()
           result-encoding: string
 
-      # ✅ Flutter build (creates build/web)
+      # ✅ 1) Install Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
 
+      # ✅ 2) Restore packages
       - name: Flutter pub get
         run: flutter pub get
         working-directory: .
 
+      # ✅ 3) Build Flutter for web (outputs to build/web)
       - name: Flutter build web
         run: flutter build web --release
         working-directory: .
 
-      # ✅ Upload the already-built site; skip Oryx build
+      # ✅ 4) Deploy to Azure
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -57,7 +61,7 @@ jobs:
           skip_app_build: true
           skip_api_build: true
           app_location: .
-          app_artifact_location: build/web
+          output_location: build/web
           github_id_token: ${{ steps.idtoken.outputs.result }}
 
   close_pull_request_job:
