@@ -28,10 +28,11 @@ class ApiService {
     final bearerToken = await AuthService.getBearerToken();
     if (bearerToken != null) {
       headers['Authorization'] = bearerToken;
-    } else {
-      // Fallback to user ID header for development/testing
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId') ?? 'test-user-123';
+    }
+    
+    // Always include x-user-id for backward compatibility
+    final userId = await AuthService.getUserId();
+    if (userId != null) {
       headers['x-user-id'] = userId;
     }
     

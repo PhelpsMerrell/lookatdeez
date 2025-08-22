@@ -1,64 +1,42 @@
 import 'dart:convert';
+import 'dart:html' as html;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
+import 'package:jwt_decoder/jwt_decoder.dart';
 import '../config/auth_config.dart';
 
 class AuthService {
-  static bool _isInitialized = false;
+  static const String _accessTokenKey = 'ms_access_token';
+  static const String _refreshTokenKey = 'ms_refresh_token';
+  static const String _tokenExpiryKey = 'ms_token_expiry';
+  static const String _userInfoKey = 'ms_user_info';
   
-  // Initialize auth service
   static Future<void> initialize() async {
-    try {
-      _isInitialized = true;
-      print('Auth service initialized');
-      
-      // Check if we're returning from Microsoft auth
-      await _handleAuthCallback();
-    } catch (e) {
-      print('Auth initialization error: $e');
-    }
+    await _handleAuthCallback();
   }
   
-  // Handle auth callback from Microsoft
   static Future<void> _handleAuthCallback() async {
-    try {
-      // This would normally parse URL parameters for auth code
-      // For now, we'll keep it simple and let the redirect handle it
-      final currentUrl = Uri.base.toString();
-      print('Current URL: $currentUrl');
+    final currentUrl = Uri.base;
+    if (currentUrl.path == '/auth/callback') {
+      final code = currentUrl.queryParameters['code'];
+      final error = currentUrl.queryParameters['error'];
       
-      if (currentUrl.contains('/auth/callback')) {
-        // We're in the callback - this means auth completed
-        // In a real implementation, we'd parse the auth code here
-        print('Auth callback detected');
+      if (error != null) {
+        throw Exception('Auth error: $error');
       }
-    } catch (e) {
-      print('Callback handling error: $e');
+      
+      if (code != null) {
+        await _exchangeCodeForTokens(code);
+        html.window.location.href = '/';
+      }
     }
   }
   
-  // Login with Microsoft (redirect approach)
   static Future<void> login() async {
-    try {
-      // Create Microsoft OAuth URL
-      final authUrl = _buildAuthUrl();
-      
-      // Redirect to Microsoft login
-      if (await canLaunchUrl(Uri.parse(authUrl))) {
-        await launchUrl(
-          Uri.parse(authUrl),
-          mode: LaunchMode.platformDefault,
-        );
-      } else {
-        throw Exception('Could not launch Microsoft login');
-      }
-    } catch (e) {
-      print('Login error: $e');
-      rethrow;
-    }
+    final authUrl = _buildAuthUrl();
+    html.window.location.href = authUrl;
   }
   
-  // Build Microsoft OAuth URL
   static String _buildAuthUrl() {
     final params = {
       'client_id': AuthConfig.clientId,
@@ -66,7 +44,8 @@ class AuthService {
       'redirect_uri': AuthConfig.currentRedirectUri,
       'scope': AuthConfig.scopes.join(' '),
       'response_mode': 'query',
-      'state': _generateState(),
+      'state': 'state_${DateTime.now().millisecondsSinceEpoch}',
+      'prompt': 'select_account',
     };
     
     final queryString = params.entries
@@ -76,118 +55,201 @@ class AuthService {
     return '${AuthConfig.authority}/oauth2/v2.0/authorize?$queryString';
   }
   
-  // Generate random state for security
-  static String _generateState() {
-    final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-    return 'state_$timestamp';
-  }
-  
-  // For now, return null - in real implementation this would exchange auth code for token
-  static Future<String?> getAccessToken() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('access_token');
-    } catch (e) {
-      print('Token acquisition error: $e');
-      return null;
-    }
-  }
-  
-  // Get user info (mock for now)
-  static Future<Map<String, dynamic>?> getUserInfo() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId');
-      final userEmail = prefs.getString('userEmail');
-      final userName = prefs.getString('userName');
+  static Future<void> _exchangeCodeForTokens(String code) async {
+    final tokenUrl = '${AuthConfig.authority}/oauth2/v2.0/token';
+    
+    final body = {
+      'client_id': AuthConfig.clientId,
+      'code': code,
+      'redirect_uri': AuthConfig.currentRedirectUri,
+      'grant_type': 'authorization_code',
+      'scope': AuthConfig.scopes.join(' '),
+    };
+    
+    final response = await http.post(
+      Uri.parse(tokenUrl),
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: body.entries
+          .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+          .join('&'),
+    );
+    
+    if (response.statusCode == 200) {
+      final tokenData = json.decode(response.body);
       
-      if (userId != null) {
-        return {
-          'id': userId,
-          'email': userEmail,
-          'name': userName,
-        };
+      final accessToken = tokenData['access_token'] as String;
+      final refreshToken = tokenData['refresh_token'] as String?;
+      final expiresIn = tokenData['expires_in'] as int;
+      
+      final expiryTime = DateTime.now().add(Duration(seconds: expiresIn));
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_accessTokenKey, accessToken);
+      if (refreshToken != null) {
+        await prefs.setString(_refreshTokenKey, refreshToken);
       }
+      await prefs.setString(_tokenExpiryKey, expiryTime.toIso8601String());
       
-      return null;
-    } catch (e) {
-      print('User info error: $e');
-      return null;
+      final userInfo = await _fetchUserInfoFromGraph(accessToken);
+      await _storeUserInfo(userInfo);
+    } else {
+      final errorData = json.decode(response.body);
+      throw Exception('Token exchange failed: ${errorData['error']}');
     }
   }
   
-  // Save user info (for testing)
-  static Future<void> saveUserInfo(Map<String, dynamic> userInfo) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('userId', userInfo['id'] ?? '');
-      await prefs.setString('userEmail', userInfo['email'] ?? '');
-      await prefs.setString('userName', userInfo['name'] ?? '');
-      await prefs.setString('access_token', userInfo['access_token'] ?? '');
-    } catch (e) {
-      print('Save user info error: $e');
+  static Future<Map<String, dynamic>> _fetchUserInfoFromGraph(String accessToken) async {
+    final response = await http.get(
+      Uri.parse('https://graph.microsoft.com/v1.0/me'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+      },
+    );
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to fetch user info: ${response.statusCode}');
     }
   }
   
-  // Check if user is logged in
-  static Future<bool> isLoggedIn() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId');
-      return userId != null && userId.isNotEmpty;
-    } catch (e) {
-      return false;
-    }
-  }
-  
-  // Logout
-  static Future<void> logout() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-      
-      // Redirect to Microsoft logout
-      final logoutUrl = '${AuthConfig.authority}/oauth2/v2.0/logout?post_logout_redirect_uri=${Uri.encodeComponent(AuthConfig.currentRedirectUri)}';
-      
-      if (await canLaunchUrl(Uri.parse(logoutUrl))) {
-        await launchUrl(
-          Uri.parse(logoutUrl),
-          mode: LaunchMode.platformDefault,
-        );
-      }
-    } catch (e) {
-      print('Logout error: $e');
-    }
-  }
-  
-  // Get stored user ID for API calls
-  static Future<String?> getUserId() async {
+  static Future<void> _storeUserInfo(Map<String, dynamic> userInfo) async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('userId');
+    
+    final userId = userInfo['id'];
+    final email = userInfo['mail'] ?? userInfo['userPrincipalName'];
+    final name = userInfo['displayName'];
+    
+    if (userId != null) await prefs.setString('userId', userId);
+    if (email != null) await prefs.setString('userEmail', email);
+    if (name != null) await prefs.setString('userName', name);
+    
+    await prefs.setString(_userInfoKey, json.encode(userInfo));
   }
   
-  // Get bearer token for API authorization
+  static Future<String?> getAccessToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString(_accessTokenKey);
+    final expiryString = prefs.getString(_tokenExpiryKey);
+    
+    if (accessToken == null) return null;
+    
+    if (expiryString != null) {
+      final expiry = DateTime.parse(expiryString);
+      if (DateTime.now().isAfter(expiry.subtract(const Duration(minutes: 5)))) {
+        final refreshed = await _refreshAccessToken();
+        if (refreshed) {
+          return prefs.getString(_accessTokenKey);
+        } else {
+          return null;
+        }
+      }
+    }
+    
+    return accessToken;
+  }
+  
+  static Future<bool> _refreshAccessToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final refreshToken = prefs.getString(_refreshTokenKey);
+    
+    if (refreshToken == null) return false;
+    
+    final tokenUrl = '${AuthConfig.authority}/oauth2/v2.0/token';
+    
+    final body = {
+      'client_id': AuthConfig.clientId,
+      'refresh_token': refreshToken,
+      'grant_type': 'refresh_token',
+      'scope': AuthConfig.scopes.join(' '),
+    };
+    
+    final response = await http.post(
+      Uri.parse(tokenUrl),
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: body.entries
+          .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+          .join('&'),
+    );
+    
+    if (response.statusCode == 200) {
+      final tokenData = json.decode(response.body);
+      
+      await prefs.setString(_accessTokenKey, tokenData['access_token']);
+      if (tokenData['refresh_token'] != null) {
+        await prefs.setString(_refreshTokenKey, tokenData['refresh_token']);
+      }
+      
+      final newExpiry = DateTime.now().add(Duration(seconds: tokenData['expires_in']));
+      await prefs.setString(_tokenExpiryKey, newExpiry.toIso8601String());
+      
+      return true;
+    }
+    
+    return false;
+  }
+  
+  static Future<Map<String, dynamic>?> getUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userInfoJson = prefs.getString(_userInfoKey);
+    
+    if (userInfoJson != null) {
+      return json.decode(userInfoJson);
+    }
+    return null;
+  }
+  
+  static Future<bool> isLoggedIn() async {
+    final accessToken = await getAccessToken();
+    return accessToken != null;
+  }
+  
+  static Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    
+    final logoutUrl = '${AuthConfig.authority}/oauth2/v2.0/logout?post_logout_redirect_uri=${Uri.encodeComponent(AuthConfig.currentRedirectUri)}';
+    html.window.location.href = logoutUrl;
+  }
+  
+  static Future<String?> getUserId() async {
+    final userInfo = await getUserInfo();
+    return userInfo?['id'];
+  }
+  
   static Future<String?> getBearerToken() async {
     final token = await getAccessToken();
     return token != null ? 'Bearer $token' : null;
   }
   
-  // Mock login for testing (simulates successful Microsoft auth)
-  static Future<void> mockMicrosoftLogin() async {
+  static Future<void> ensureUserExists() async {
     try {
-      // Simulate successful Microsoft login
-      final mockUserInfo = {
-        'id': 'microsoft-user-${DateTime.now().millisecondsSinceEpoch}',
-        'email': 'user@outlook.com',
-        'name': 'Microsoft User',
-        'access_token': 'mock-access-token-${DateTime.now().millisecondsSinceEpoch}',
-      };
+      final userInfo = await getUserInfo();
+      if (userInfo == null) return;
       
-      await saveUserInfo(mockUserInfo);
-      print('Mock Microsoft login successful');
+      final email = userInfo['mail'] ?? userInfo['userPrincipalName'];
+      final displayName = userInfo['displayName'];
+      
+      if (email == null || displayName == null) return;
+      
+      final apiUrl = Uri.base.host == 'localhost' 
+          ? 'http://localhost:7071/api'
+          : 'https://lookatdeez-functions.azurewebsites.net/api';
+      
+      final response = await http.post(
+        Uri.parse('$apiUrl/users'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': await getBearerToken() ?? '',
+        },
+        body: json.encode({
+          'email': email,
+          'displayName': displayName,
+        }),
+      );
     } catch (e) {
-      print('Mock login error: $e');
-      rethrow;
+      print('Error ensuring user exists: $e');
     }
   }
 }
