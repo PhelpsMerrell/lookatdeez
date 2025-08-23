@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lookatdeez/pages/playlist_menu_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import '../services/auth_service.dart';
-import '../services/api_service.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../config/environment.dart';
 
 
 class LoginPage extends StatefulWidget {
