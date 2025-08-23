@@ -108,8 +108,18 @@ class AuthService {
       // Ensure user exists in backend after token exchange
       await ensureUserExists();
     } else {
-      final errorData = json.decode(response.body);
-      throw Exception('Token exchange failed: ${errorData['error']}');
+      // More detailed error logging
+      try {
+        final errorData = json.decode(response.body);
+        print('Detailed error from Microsoft:');
+        print('  Error: ${errorData['error']}');
+        print('  Error Description: ${errorData['error_description']}');
+        print('  Error URI: ${errorData['error_uri']}');
+        throw Exception('Token exchange failed: ${errorData['error']} - ${errorData['error_description']}');
+      } catch (e) {
+        print('Could not parse error response, raw body: ${response.body}');
+        throw Exception('Token exchange failed: HTTP ${response.statusCode} - ${response.body}');
+      }
     }
   }
   
