@@ -45,12 +45,8 @@ class AuthConfig {
   ];
 
   static String get currentRedirectUri {
-    // Use localhost for development, production URL for deployed app
-    final currentHost = Uri.base.host;
-    if (currentHost == 'localhost' || currentHost == '127.0.0.1') {
-      return redirectUriLocal;
-    }
-    return redirectUri;
+    // Use production URL since you're running on lookatdeez.com
+    return redirectUri; // Always use production URI
   }
 
   

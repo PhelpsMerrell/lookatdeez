@@ -49,14 +49,15 @@ class AuthService {
       'scope': AuthConfig.scopes.join(' '),
       'response_mode': 'query',
       'state': 'state_${DateTime.now().millisecondsSinceEpoch}',
-      'prompt': 'select_account',
     };
     
     final queryString = params.entries
         .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
         .join('&');
     
-    return '${AuthConfig.authority}/oauth2/v2.0/authorize?$queryString';
+    final authUrl = '${AuthConfig.authority}/oauth2/v2.0/authorize?$queryString';
+    print('Auth URL: $authUrl');
+    return authUrl;
   }
   
   static Future<void> _exchangeCodeForTokens(String code) async {
