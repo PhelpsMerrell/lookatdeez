@@ -26,30 +26,35 @@ class _AuthCallbackPageState extends State<AuthCallbackPage> {
       setState(() => _status = 'Exchanging authorization code...');
       await AuthService.initialize();
       
-      setState(() => _status = 'Verifying authentication...');
+      setState(() => _status = 'Verifying JWT token...');
       
       final isLoggedIn = await AuthService.isLoggedIn();
-      if (isLoggedIn) {
-        setState(() => _status = 'Creating user profile...');
-        await AuthService.ensureUserExists();
-        
-        setState(() {
-          _status = 'Authentication successful!';
-          _isProcessing = false;
-        });
-        
-        await Future.delayed(const Duration(seconds: 1));
-        
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const PlaylistMenuPage()),
-          );
-        }
-      } else {
-        throw Exception('Authentication verification failed');
+      if (!isLoggedIn) {
+        throw Exception('JWT token verification failed');
+      }
+      
+      setState(() => _status = 'Creating/verifying user account...');
+      
+      final userCreated = await AuthService.ensureUserExists();
+      if (!userCreated) {
+        throw Exception('Failed to create/verify user account');
+      }
+      
+      setState(() {
+        _status = 'Authentication successful!';
+        _isProcessing = false;
+      });
+      
+      await Future.delayed(const Duration(seconds: 1));
+      
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const PlaylistMenuPage()),
+        );
       }
     } catch (e) {
+      print('Auth callback error: $e');
       setState(() {
         _error = e.toString();
         _isProcessing = false;

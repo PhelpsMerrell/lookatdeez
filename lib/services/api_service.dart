@@ -7,7 +7,6 @@ import '../models/friend.dart';
 import '../config/environment.dart';
 import 'auth_service.dart';
 
-// Custom exception for friend request specific errors
 class FriendRequestException implements Exception {
   final String message;
   FriendRequestException(this.message);
@@ -24,22 +23,16 @@ class ApiService {
       'Content-Type': 'application/json',
     };
     
-    // Try to get Microsoft auth token first
+    // Use JWT Bearer token authentication
     final bearerToken = await AuthService.getBearerToken();
     if (bearerToken != null) {
       headers['Authorization'] = bearerToken;
     }
     
-    // Always include x-user-id for backward compatibility
-    final userId = await AuthService.getUserId();
-    if (userId != null) {
-      headers['x-user-id'] = userId;
-    }
-    
     return headers;
   }
 
-   // Add user profile methods
+  // Add user profile methods
   static Future<Map<String, dynamic>> getUserProfile(String userId) async {
     try {
       print('Calling getUserProfile for userId: $userId');
@@ -59,6 +52,8 @@ class ApiService {
       
       if (response.statusCode == 200) {
         return json.decode(response.body);
+      } else if (response.statusCode == 401) {
+        throw Exception('Authentication required. Please log in again.');
       } else {
         throw Exception('Failed to load profile: ${response.statusCode} - ${response.body}');
       }
@@ -69,8 +64,10 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getCurrentUserProfile() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId') ?? 'test-user-123';
+    final userId = await AuthService.getDatabaseUserId();
+    if (userId == null) {
+      throw Exception('User ID not found. Please log in again.');
+    }
     return getUserProfile(userId);
   }
   
@@ -89,22 +86,21 @@ class ApiService {
         
         final allPlaylists = [...owned, ...shared];
         
-        // Remove duplicates by ID (same playlists appearing in owned AND shared)
+        // Remove duplicates by ID
         final uniquePlaylists = <String, Map<String, dynamic>>{};
         for (var playlist in allPlaylists) {
           uniquePlaylists[playlist['id']] = playlist;
         }
         
         return uniquePlaylists.values.map((json) => Playlist.fromJson(json)).toList();
+      } else if (response.statusCode == 401) {
+        throw Exception('Authentication required. Please log in again.');
       } else {
         throw Exception('Failed to load playlists: ${response.statusCode}');
       }
     } catch (e) {
       print('API Error: $e');
-      // Fallback dummy data
-      return [
-       
-      ];
+      rethrow;
     }
   }
 
@@ -122,12 +118,14 @@ class ApiService {
       
       if (response.statusCode == 201 || response.statusCode == 200) {
         return Playlist.fromJson(json.decode(response.body));
+      } else if (response.statusCode == 401) {
+        throw Exception('Authentication required. Please log in again.');
       } else {
         throw Exception('Failed to create playlist: ${response.statusCode}');
       }
     } catch (e) {
       print('Create error: $e');
-      rethrow; // Don't create mock data, let the error bubble up
+      rethrow;
     }
   }
 
@@ -139,15 +137,17 @@ class ApiService {
         headers: headers,
       );
       
-      if (response.statusCode != 204) {
+      if (response.statusCode == 401) {
+        throw Exception('Authentication required. Please log in again.');
+      } else if (response.statusCode != 204) {
         throw Exception('Failed to delete playlist: ${response.statusCode}');
       }
     } catch (e) {
       print('Delete error: $e');
+      rethrow;
     }
   }
 
-  // Add playlist item management (wire up to your existing endpoints)
   static Future<VideoItem> addItemToPlaylist(String playlistId, String title, String url) async {
     try {
       final headers = await _headers;
@@ -162,6 +162,8 @@ class ApiService {
       
       if (response.statusCode == 201 || response.statusCode == 200) {
         return VideoItem.fromJson(json.decode(response.body));
+      } else if (response.statusCode == 401) {
+        throw Exception('Authentication required. Please log in again.');
       } else {
         throw Exception('Failed to add item: ${response.statusCode}');
       }
@@ -179,7 +181,9 @@ class ApiService {
         headers: headers,
       );
       
-      if (response.statusCode != 204) {
+      if (response.statusCode == 401) {
+        throw Exception('Authentication required. Please log in again.');
+      } else if (response.statusCode != 204) {
         throw Exception('Failed to remove item: ${response.statusCode}');
       }
     } catch (e) {
@@ -199,7 +203,9 @@ class ApiService {
         }),
       );
       
-      if (response.statusCode != 204) {
+      if (response.statusCode == 401) {
+        throw Exception('Authentication required. Please log in again.');
+      } else if (response.statusCode != 204) {
         throw Exception('Failed to reorder items: ${response.statusCode}');
       }
     } catch (e) {
@@ -208,70 +214,8 @@ class ApiService {
     }
   }
 
-  // ==== USER MANAGEMENT METHODS ====
-  
-  // Create a new user account
-  static Future<Map<String, dynamic>> createUser(String email, String displayName) async {
-    try {
-      print('Creating user via API: email=$email, displayName=$displayName');
-      
-      final response = await http.post(
-        Uri.parse('$baseUrl/users'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'email': email,
-          'displayName': displayName,
-        }),
-      );
-      
-      print('Create user response: ${response.statusCode}');
-      print('Response body: ${response.body}');
-      
-      if (response.statusCode == 201) {
-        return json.decode(response.body);
-      } else if (response.statusCode == 409) {
-        throw Exception('A user with this email already exists');
-      } else {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['error'] ?? 'Failed to create user');
-      }
-    } catch (e) {
-      print('Error creating user: $e');
-      rethrow;
-    }
-  }
-
-  // Search for a user by email (for login)
-  static Future<Map<String, dynamic>?> findUserByEmail(String email) async {
-    try {
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-        'x-user-id': 'temp-search-user', // Temporary for search
-      };
-      
-      final response = await http.get(
-        Uri.parse('$baseUrl/users/search?q=${Uri.encodeComponent(email)}'),
-        headers: headers,
-      );
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> users = json.decode(response.body);
-        final user = users.firstWhere(
-          (u) => u['email'].toLowerCase() == email.toLowerCase(),
-          orElse: () => null,
-        );
-        return user;
-      }
-      return null;
-    } catch (e) {
-      print('Error finding user: $e');
-      return null;
-    }
-  }
-
   // ==== FRIEND MANAGEMENT METHODS ====
   
-  // Get user's friends list
   static Future<List<Friend>> getUserFriends(String userId) async {
     try {
       final headers = await _headers;
@@ -283,23 +227,25 @@ class ApiService {
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => Friend.fromJson(json)).toList();
+      } else if (response.statusCode == 401) {
+        throw Exception('Authentication required. Please log in again.');
       } else {
         throw Exception('Failed to load friends: ${response.statusCode}');
       }
     } catch (e) {
       print('Get friends error: $e');
-      return []; // Return empty list on error
+      return [];
     }
   }
 
-  // Get current user's friends
   static Future<List<Friend>> getCurrentUserFriends() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId')!;
+    final userId = await AuthService.getDatabaseUserId();
+    if (userId == null) {
+      throw Exception('User ID not found. Please log in again.');
+    }
     return getUserFriends(userId);
   }
 
-  // Send friend request
   static Future<FriendRequest> sendFriendRequest(String toUserId) async {
     try {
       final headers = await _headers;
@@ -313,23 +259,21 @@ class ApiService {
       
       if (response.statusCode == 201 || response.statusCode == 200) {
         return FriendRequest.fromJson(json.decode(response.body));
+      } else if (response.statusCode == 401) {
+        throw Exception('Authentication required. Please log in again.');
       } else if (response.statusCode == 400) {
-        // Parse the error message from the response body
         String errorMessage = 'Bad request';
         try {
           final errorBody = response.body;
           if (errorBody.isNotEmpty) {
-            // If it's JSON, try to parse it
             if (errorBody.startsWith('{')) {
               final errorJson = json.decode(errorBody);
               errorMessage = errorJson['error'] ?? errorBody;
             } else {
-              // If it's plain text, use it directly
               errorMessage = errorBody;
             }
           }
         } catch (parseError) {
-          // If parsing fails, use the raw response body
           errorMessage = response.body.isNotEmpty ? response.body : 'Unknown error';
         }
         throw FriendRequestException(errorMessage);
@@ -342,51 +286,28 @@ class ApiService {
     }
   }
 
-  // Get friend requests (sent and received)
   static Future<FriendRequestsEnvelope> getFriendRequests() async {
     try {
       final headers = await _headers;
-      
       final response = await http.get(
         Uri.parse('$baseUrl/friend-requests'),
         headers: headers,
       );
       
-      print('Friend requests response status: ${response.statusCode}');
-      print('Friend requests response body: ${response.body}');
-      
       if (response.statusCode == 200) {
-        try {
-          final data = json.decode(response.body);
-          print('Parsed friend requests data type: ${data.runtimeType}');
-          print('Data keys: ${data.keys}');
-          
-          if (data['Sent'] != null) {
-            print('Sent type: ${data['Sent'].runtimeType}, length: ${data['Sent'].length}');
-          }
-          if (data['Received'] != null) {
-            print('Received type: ${data['Received'].runtimeType}, length: ${data['Received'].length}');
-          }
-          
-          final envelope = FriendRequestsEnvelope.fromJson(data);
-          print('Successfully created envelope - Sent: ${envelope.sent.length}, Received: ${envelope.received.length}');
-          
-          return envelope;
-        } catch (parseError) {
-          print('JSON parsing error: $parseError');
-          print('Raw response: ${response.body}');
-          rethrow;
-        }
+        final data = json.decode(response.body);
+        return FriendRequestsEnvelope.fromJson(data);
+      } else if (response.statusCode == 401) {
+        throw Exception('Authentication required. Please log in again.');
       } else {
         throw Exception('Failed to load friend requests: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Get friend requests error: $e');
-      return FriendRequestsEnvelope(sent: [], received: []); // Return empty on error
+      return FriendRequestsEnvelope(sent: [], received: []);
     }
   }
 
-  // Accept/decline friend request
   static Future<FriendRequest> updateFriendRequest(String requestId, FriendRequestStatus status) async {
     try {
       final headers = await _headers;
@@ -400,6 +321,8 @@ class ApiService {
       
       if (response.statusCode == 200) {
         return FriendRequest.fromJson(json.decode(response.body));
+      } else if (response.statusCode == 401) {
+        throw Exception('Authentication required. Please log in again.');
       } else {
         throw Exception('Failed to update friend request: ${response.statusCode} - ${response.body}');
       }
@@ -409,7 +332,6 @@ class ApiService {
     }
   }
 
-  // Remove friend
   static Future<void> removeFriend(String friendId) async {
     try {
       final headers = await _headers;
@@ -418,7 +340,9 @@ class ApiService {
         headers: headers,
       );
       
-      if (response.statusCode != 204) {
+      if (response.statusCode == 401) {
+        throw Exception('Authentication required. Please log in again.');
+      } else if (response.statusCode != 204) {
         throw Exception('Failed to remove friend: ${response.statusCode}');
       }
     } catch (e) {
@@ -427,11 +351,9 @@ class ApiService {
     }
   }
 
-  // Search users by name/email (for adding friends)
   static Future<List<User>> searchUsers(String searchTerm) async {
     try {
       final headers = await _headers;
-      // Note: You'll need to add this endpoint to your backend
       final response = await http.get(
         Uri.parse('$baseUrl/users/search?q=${Uri.encodeQueryComponent(searchTerm)}'),
         headers: headers,
@@ -440,16 +362,17 @@ class ApiService {
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => User.fromJson(json)).toList();
+      } else if (response.statusCode == 401) {
+        throw Exception('Authentication required. Please log in again.');
       } else {
         throw Exception('Failed to search users: ${response.statusCode}');
       }
     } catch (e) {
       print('Search users error: $e');
-      return []; // Return empty list on error
+      return [];
     }
   }
 
-  // Helper method to convert status enum to int
   static int _statusToInt(FriendRequestStatus status) {
     switch (status) {
       case FriendRequestStatus.pending: return 0;

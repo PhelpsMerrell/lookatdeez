@@ -56,7 +56,6 @@ class AuthService {
   }
   
   static Future<void> _exchangeCodeForTokens(String code) async {
-    // Use B2C token endpoint
     final tokenUrl = '${AuthConfig.authority}/oauth2/v2.0/token';
     
     print('Exchanging code for tokens at: $tokenUrl');
@@ -98,18 +97,8 @@ class AuthService {
       }
       await prefs.setString(_tokenExpiryKey, expiryTime.toIso8601String());
       
-      // For B2C, we might need to get user info differently
-      Map<String, dynamic> userInfo;
-      try {
-        userInfo = await _fetchUserInfoFromGraph(accessToken);
-        print('Got user info from Graph: $userInfo');
-      } catch (e) {
-        print('Failed to get user info from Graph: $e');
-        // Try to extract from token
-        userInfo = _extractUserInfoFromToken(accessToken);
-        print('Extracted user info from token: $userInfo');
-      }
-      
+      // Extract user info from JWT token
+      final userInfo = _extractUserInfoFromToken(accessToken);
       await _storeUserInfo(userInfo);
     } else {
       final errorData = json.decode(response.body);
@@ -124,44 +113,37 @@ class AuthService {
       return {
         'id': handler['oid'] ?? handler['sub'] ?? 'unknown',
         'displayName': handler['name'] ?? handler['given_name'] ?? 'User',
-        'mail': handler['emails']?.first ?? handler['email'] ?? 'no-email@example.com',
-        'userPrincipalName': handler['emails']?.first ?? handler['email'] ?? 'no-email@example.com',
+        'email': _extractEmail(handler),
       };
     } catch (e) {
       print('Error extracting user info from token: $e');
       return {
         'id': 'unknown-${DateTime.now().millisecondsSinceEpoch}',
         'displayName': 'User',
-        'mail': 'no-email@example.com',
-        'userPrincipalName': 'no-email@example.com',
+        'email': 'no-email@example.com',
       };
     }
   }
   
-  static Future<Map<String, dynamic>> _fetchUserInfoFromGraph(String accessToken) async {
-    final response = await http.get(
-      Uri.parse('https://graph.microsoft.com/v1.0/me'),
-      headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      },
-    );
-    
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception('Failed to fetch user info: ${response.statusCode}');
+  static String _extractEmail(Map<String, dynamic> tokenPayload) {
+    // Try different possible email claims
+    if (tokenPayload['email'] != null) return tokenPayload['email'];
+    if (tokenPayload['emails'] != null && tokenPayload['emails'] is List) {
+      final emails = tokenPayload['emails'] as List;
+      if (emails.isNotEmpty) return emails.first.toString();
     }
+    if (tokenPayload['preferred_username'] != null) return tokenPayload['preferred_username'];
+    return 'no-email@example.com';
   }
   
   static Future<void> _storeUserInfo(Map<String, dynamic> userInfo) async {
     final prefs = await SharedPreferences.getInstance();
     
     final userId = userInfo['id'];
-    final email = userInfo['mail'] ?? userInfo['userPrincipalName'];
+    final email = userInfo['email'];
     final name = userInfo['displayName'];
     
-    if (userId != null) await prefs.setString('userId', userId);
+    if (userId != null) await prefs.setString('microsoftUserId', userId);
     if (email != null) await prefs.setString('userEmail', email);
     if (name != null) await prefs.setString('userName', name);
     
@@ -253,9 +235,14 @@ class AuthService {
     html.window.location.href = logoutUrl;
   }
   
-  static Future<String?> getUserId() async {
-    final userInfo = await getUserInfo();
-    return userInfo?['id'];
+  static Future<String?> getMicrosoftUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('microsoftUserId');
+  }
+  
+  static Future<String?> getDatabaseUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('databaseUserId');
   }
   
   static Future<String?> getBearerToken() async {
@@ -263,93 +250,55 @@ class AuthService {
     return token != null ? 'Bearer $token' : null;
   }
   
-  static Future<void> ensureUserExists() async {
+  static Future<bool> ensureUserExists() async {
     try {
-      final userInfo = await getUserInfo();
-      if (userInfo == null) return;
-      
-      final email = userInfo['mail'] ?? userInfo['userPrincipalName'];
-      final displayName = userInfo['displayName'];
-      final microsoftUserId = userInfo['id'];
-      
-      if (email == null || displayName == null || microsoftUserId == null) return;
-      
-      print('Ensuring Microsoft user exists: $email, $displayName, $microsoftUserId');
+      final bearerToken = await getBearerToken();
+      if (bearerToken == null) {
+        print('No bearer token available');
+        return false;
+      }
       
       final apiUrl = Uri.base.host == 'localhost' 
           ? 'http://localhost:7071/api'
           : 'https://lookatdeez-functions.azurewebsites.net/api';
+      
+      print('Creating/verifying user with backend...');
       
       final response = await http.post(
         Uri.parse('$apiUrl/users'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': await getBearerToken() ?? '',
+          'Authorization': bearerToken,
         },
-        body: json.encode({
-          'email': email,
-          'displayName': displayName,
-        }),
+        body: json.encode({}), // Empty body - user info comes from JWT
       );
       
-      print('Ensure user response: ${response.statusCode}');
+      print('User creation response: ${response.statusCode}');
       print('Response body: ${response.body}');
       
-      if (response.statusCode == 201) {
-        // User created successfully
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        // User created or already exists
         final userData = json.decode(response.body);
-        print('Microsoft user created in database with ID: ${userData['id']}');
+        print('User verified/created in database with ID: ${userData['id']}');
         
-        // Store the database user ID (not the Microsoft ID)
+        // Store the database user ID
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('userId', userData['id']);
-        await prefs.setString('email', userData['email']);
+        await prefs.setString('databaseUserId', userData['id']);
+        await prefs.setString('userEmail', userData['email']);
         await prefs.setString('displayName', userData['displayName']);
         
-      } else if (response.statusCode == 409) {
-        // User already exists, find them
-        print('Microsoft user already exists, finding them...');
-        await _findAndStoreExistingUser(email);
-        
+        return true;
+      } else if (response.statusCode == 401) {
+        print('JWT token invalid - clearing auth state');
+        await logout();
+        return false;
       } else {
-        print('Failed to create/find user: ${response.statusCode} - ${response.body}');
+        print('Failed to create/verify user: ${response.statusCode} - ${response.body}');
+        return false;
       }
     } catch (e) {
       print('Error ensuring user exists: $e');
-    }
-  }
-  
-  static Future<void> _findAndStoreExistingUser(String email) async {
-    try {
-      final apiUrl = Uri.base.host == 'localhost' 
-          ? 'http://localhost:7071/api'
-          : 'https://lookatdeez-functions.azurewebsites.net/api';
-      
-      final response = await http.get(
-        Uri.parse('$apiUrl/users/search?q=${Uri.encodeComponent(email)}'),
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': 'temp-search-user',
-        },
-      );
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> users = json.decode(response.body);
-        final user = users.firstWhere(
-          (u) => u['email'].toLowerCase() == email.toLowerCase(),
-          orElse: () => null,
-        );
-        
-        if (user != null) {
-          print('Found existing user: ${user['id']}');
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('userId', user['id']);
-          await prefs.setString('email', user['email']);
-          await prefs.setString('displayName', user['displayName']);
-        }
-      }
-    } catch (e) {
-      print('Error finding existing user: $e');
+      return false;
     }
   }
 }

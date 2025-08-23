@@ -75,21 +75,17 @@ void _handleSubmit() async {
     setState(() => _isLoading = true);
     
     try {
-      if (_isLogin) {
-        // LOGIN: Just redirect to B2C signin
-        _handleMicrosoftLogin();
-      } else {
-        // SIGNUP: Could either redirect to B2C or create account directly
-        // For now, let's try B2C signup flow which allows new account creation
-        _handleMicrosoftLogin();
-      }
+      // Both login and signup use Microsoft B2C flow
+      _handleMicrosoftLogin();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_isLogin ? 'Login failed: $e' : 'Signup failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Authentication failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -117,15 +113,16 @@ void _handleSubmit() async {
 
   void _handleMicrosoftLogin() async {
     try {
-      // Use real Microsoft OAuth flow
       await AuthService.login();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Microsoft login failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Microsoft authentication failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -585,11 +582,9 @@ void _handleSubmit() async {
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                                 ),
-                                child: Text(
-                                  _isLogin 
-                                      ? 'You\'ll be securely authenticated through Microsoft'
-                                      : 'Your account will be created securely through Microsoft and stored in our system',
-                                  style: const TextStyle(
+                                child: const Text(
+                                  'Sign in or create your account securely through Microsoft. Your account will be automatically created if this is your first time.',
+                                  style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 12,
                                   ),
@@ -615,7 +610,7 @@ void _handleSubmit() async {
                                   label: Text(
                                     _isLoading 
                                         ? 'Processing...'
-                                        : (_isLogin ? 'Sign In' : 'Create Account'),
+                                        : 'Continue with Microsoft',
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
