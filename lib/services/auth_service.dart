@@ -306,7 +306,6 @@ class AuthService {
         Uri.parse('$apiUrl/users/$microsoftUserId/profile'),
         headers: {
           'Authorization': bearerToken,
-          'x-user-id': microsoftUserId,
         },
       );
       
@@ -353,8 +352,7 @@ class AuthService {
         Uri.parse('$apiUrl/users'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': bearerToken, // Add Bearer token
-          'x-user-id': microsoftUserId,
+          'Authorization': bearerToken,
         },
         body: json.encode({
           'email': userInfo['email'] ?? 'no-email@example.com',

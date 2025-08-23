@@ -29,12 +29,6 @@ class ApiService {
       headers['Authorization'] = bearerToken;
     }
     
-    // Add x-user-id header which is required by the backend
-    final userId = await AuthService.getMicrosoftUserId();
-    if (userId != null) {
-      headers['x-user-id'] = userId;
-    }
-    
     return headers;
   }
 
