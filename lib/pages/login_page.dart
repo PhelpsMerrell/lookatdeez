@@ -262,7 +262,7 @@ void _handleSubmit() async {
                           label: Text(
                             _isLoading 
                                 ? 'Signing in...'
-                                : 'Sign in with Microsoft',
+                                : 'Sign in',
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
