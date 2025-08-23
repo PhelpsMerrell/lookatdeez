@@ -44,7 +44,14 @@ class AuthConfig {
     'offline_access',
   ];
 
-  static get currentRedirectUri => "https://lookatdeez.com/auth/callback";
+  static String get currentRedirectUri {
+    // Use localhost for development, production URL for deployed app
+    final currentHost = Uri.base.host;
+    if (currentHost == 'localhost' || currentHost == '127.0.0.1') {
+      return redirectUriLocal;
+    }
+    return redirectUri;
+  }
 
   
 

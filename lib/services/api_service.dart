@@ -29,6 +29,12 @@ class ApiService {
       headers['Authorization'] = bearerToken;
     }
     
+    // Add x-user-id header which is required by the backend
+    final userId = await AuthService.getMicrosoftUserId();
+    if (userId != null) {
+      headers['x-user-id'] = userId;
+    }
+    
     return headers;
   }
 
@@ -64,7 +70,7 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getCurrentUserProfile() async {
-    final userId = await AuthService.getDatabaseUserId();
+    final userId = await AuthService.getMicrosoftUserId(); // Use Microsoft ID as that's what backend expects
     if (userId == null) {
       throw Exception('User ID not found. Please log in again.');
     }
@@ -239,7 +245,7 @@ class ApiService {
   }
 
   static Future<List<Friend>> getCurrentUserFriends() async {
-    final userId = await AuthService.getDatabaseUserId();
+    final userId = await AuthService.getMicrosoftUserId(); // Use Microsoft ID
     if (userId == null) {
       throw Exception('User ID not found. Please log in again.');
     }

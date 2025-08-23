@@ -26,11 +26,14 @@ class _AuthCallbackPageState extends State<AuthCallbackPage> {
       setState(() => _status = 'Exchanging authorization code...');
       await AuthService.initialize();
       
-      setState(() => _status = 'Verifying JWT token...');
+      setState(() => _status = 'Verifying tokens...');
       
-      final isLoggedIn = await AuthService.isLoggedIn();
-      if (!isLoggedIn) {
-        throw Exception('JWT token verification failed');
+      // Check if we have tokens first
+      final hasToken = await AuthService.getAccessToken() != null;
+      print('Has access token after initialize: $hasToken');
+      
+      if (!hasToken) {
+        throw Exception('No access token after authentication');
       }
       
       setState(() => _status = 'Creating/verifying user account...');
@@ -38,6 +41,14 @@ class _AuthCallbackPageState extends State<AuthCallbackPage> {
       final userCreated = await AuthService.ensureUserExists();
       if (!userCreated) {
         throw Exception('Failed to create/verify user account');
+      }
+      
+      setState(() => _status = 'Final verification...');
+      
+      // Final check
+      final isLoggedIn = await AuthService.isLoggedIn();
+      if (!isLoggedIn) {
+        throw Exception('Final login verification failed');
       }
       
       setState(() {

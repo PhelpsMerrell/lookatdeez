@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/playlist.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/main_app_bar.dart';
 import '../widgets/playlist_card.dart';
 import 'friends_page.dart';
@@ -283,11 +284,24 @@ class _PlaylistMenuPageState extends State<PlaylistMenuPage> {
     );
   }
 
-void _signOut() {
-  Navigator.of(context).pushAndRemoveUntil(
-    MaterialPageRoute(builder: (_) => const LoginPage()),
-    (route) => false, // clear back stack so Back won't return here
-  );
+void _signOut() async {
+  try {
+    // Call the auth service logout which clears tokens and redirects to Microsoft logout
+    await AuthService.logout();
+    
+    // The logout method will redirect to Microsoft's logout page and then back to our app
+    // so we don't need to navigate manually here
+  } catch (e) {
+    print('Sign out error: $e');
+    
+    // If there's an error, still try to navigate to login page
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (route) => false,
+      );
+    }
+  }
 }
 
 }

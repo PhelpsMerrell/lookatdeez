@@ -22,11 +22,15 @@ class AuthService {
       final error = currentUrl.queryParameters['error'];
       
       if (error != null) {
+        print('OAuth error: $error');
         throw Exception('Auth error: $error');
       }
       
       if (code != null) {
+        print('Received OAuth code, exchanging for tokens...');
         await _exchangeCodeForTokens(code);
+        print('Token exchange complete, redirecting to main app');
+        // Navigate to main page after successful authentication
         html.window.location.href = '/';
       }
     }
@@ -100,6 +104,9 @@ class AuthService {
       // Extract user info from JWT token
       final userInfo = _extractUserInfoFromToken(accessToken);
       await _storeUserInfo(userInfo);
+      
+      // Ensure user exists in backend after token exchange
+      await ensureUserExists();
     } else {
       final errorData = json.decode(response.body);
       throw Exception('Token exchange failed: ${errorData['error']}');
@@ -223,8 +230,32 @@ class AuthService {
   }
   
   static Future<bool> isLoggedIn() async {
+    print('=== Checking if user is logged in ===');
     final accessToken = await getAccessToken();
-    return accessToken != null;
+    print('Access token exists: ${accessToken != null}');
+    
+    if (accessToken != null) {
+      // Also check if user exists in backend
+      try {
+        final userExists = await _checkUserExistsInBackend();
+        print('User exists in backend: $userExists');
+        
+        // If token is valid but user doesn't exist in backend, create them
+        if (!userExists) {
+          print('Creating user in backend...');
+          final created = await ensureUserExists();
+          print('User creation result: $created');
+          return created;
+        }
+        
+        return userExists;
+      } catch (e) {
+        print('Error checking user in backend: $e');
+        return false;
+      }
+    }
+    
+    return false;
   }
   
   static Future<void> logout() async {
@@ -250,6 +281,52 @@ class AuthService {
     return token != null ? 'Bearer $token' : null;
   }
   
+  static Future<bool> _checkUserExistsInBackend() async {
+    try {
+      final bearerToken = await getBearerToken();
+      if (bearerToken == null) {
+        print('No bearer token available for user check');
+        return false;
+      }
+      
+      final microsoftUserId = await getMicrosoftUserId();
+      if (microsoftUserId == null) {
+        print('No Microsoft user ID available');
+        return false;
+      }
+      
+      final apiUrl = Uri.base.host == 'localhost' 
+          ? 'http://localhost:7071/api'
+          : 'https://lookatdeez-functions.azurewebsites.net/api';
+      
+      print('Checking if user exists in backend: $microsoftUserId');
+      
+      // Try to get user profile to see if they exist
+      final response = await http.get(
+        Uri.parse('$apiUrl/users/$microsoftUserId/profile'),
+        headers: {
+          'Authorization': bearerToken,
+          'x-user-id': microsoftUserId,
+        },
+      );
+      
+      print('User profile check response: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        print('User exists in backend');
+        return true;
+      } else if (response.statusCode == 404) {
+        print('User does not exist in backend, will create');
+        return false;
+      } else {
+        print('Unexpected response from backend: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('Error checking user exists: $e');
+      return false;
+    }
+  }
+  
   static Future<bool> ensureUserExists() async {
     try {
       final bearerToken = await getBearerToken();
@@ -264,13 +341,25 @@ class AuthService {
       
       print('Creating/verifying user with backend...');
       
+      final microsoftUserId = await getMicrosoftUserId();
+      final userInfo = await getUserInfo();
+      
+      if (microsoftUserId == null || userInfo == null) {
+        print('Missing user info: microsoftUserId=$microsoftUserId, userInfo=$userInfo');
+        return false;
+      }
+      
       final response = await http.post(
         Uri.parse('$apiUrl/users'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': bearerToken,
+          'Authorization': bearerToken, // Add Bearer token
+          'x-user-id': microsoftUserId,
         },
-        body: json.encode({}), // Empty body - user info comes from JWT
+        body: json.encode({
+          'email': userInfo['email'] ?? 'no-email@example.com',
+          'displayName': userInfo['displayName'] ?? 'User',
+        }),
       );
       
       print('User creation response: ${response.statusCode}');
@@ -281,7 +370,7 @@ class AuthService {
         final userData = json.decode(response.body);
         print('User verified/created in database with ID: ${userData['id']}');
         
-        // Store the database user ID
+        // Store the database user ID - should be same as Microsoft ID
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('databaseUserId', userData['id']);
         await prefs.setString('userEmail', userData['email']);
