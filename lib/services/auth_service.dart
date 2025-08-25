@@ -221,23 +221,39 @@ class AuthService {
   
   static Future<String?> getAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
+    print('=== getAccessToken() DEBUG ===');
+    
+    // Debug: Check what keys exist
+    final allKeys = prefs.getKeys();
+    print('All SharedPreferences keys: $allKeys');
+    
     final accessToken = prefs.getString(_accessTokenKey);
     final expiryString = prefs.getString(_tokenExpiryKey);
     
-    if (accessToken == null) return null;
+    print('Access token from key "$_accessTokenKey": ${accessToken != null ? "EXISTS (${accessToken.length} chars)" : "NULL"}');
+    print('Expiry from key "$_tokenExpiryKey": ${expiryString ?? "NULL"}');
+    
+    if (accessToken == null) {
+      print('No access token found in SharedPreferences');
+      return null;
+    }
     
     if (expiryString != null) {
       final expiry = DateTime.parse(expiryString);
       if (DateTime.now().isAfter(expiry.subtract(const Duration(minutes: 5)))) {
+        print('Token is expired or expires soon, attempting refresh...');
         final refreshed = await _refreshAccessToken();
         if (refreshed) {
+          print('Token refreshed successfully');
           return prefs.getString(_accessTokenKey);
         } else {
+          print('Token refresh failed');
           return null;
         }
       }
     }
     
+    print('Returning valid access token');
     return accessToken;
   }
   
