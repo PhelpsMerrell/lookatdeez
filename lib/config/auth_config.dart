@@ -13,13 +13,12 @@ class AuthConfig {
   static const String redirectUri = 'https://lookatdeez.com/auth/callback';
   static const String redirectUriLocal = 'http://localhost:5173/auth/callback';
 
-  // Scopes - request token for this application, not Microsoft Graph
+  // Scopes
   static const List<String> scopes = [
     'openid',
     'profile',
     'email',
     'offline_access',
-    clientId,  // Add your client ID as a scope to get token for your app
   ];
 
   static String get currentRedirectUri {
