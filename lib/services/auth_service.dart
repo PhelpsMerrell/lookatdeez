@@ -1,5 +1,8 @@
 import 'dart:convert';
 import 'dart:html' as html;
+import 'dart:math';
+import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:jwt_decoder/jwt_decoder.dart';
@@ -10,6 +13,7 @@ class AuthService {
   static const String _refreshTokenKey = 'ms_refresh_token';
   static const String _tokenExpiryKey = 'ms_token_expiry';
   static const String _userInfoKey = 'ms_user_info';
+  static const String _codeVerifierKey = 'pkce_code_verifier';
   
   static Future<void> initialize() async {
     await _handleAuthCallback();
@@ -37,11 +41,32 @@ class AuthService {
   }
   
   static Future<void> login() async {
-    final authUrl = _buildAuthUrl();
+    final authUrl = await _buildAuthUrl();
     html.window.location.href = authUrl;
   }
   
-  static String _buildAuthUrl() {
+  // PKCE helper methods
+  static String _generateCodeVerifier() {
+    final random = Random.secure();
+    final bytes = List<int>.generate(32, (_) => random.nextInt(256));
+    return base64UrlEncode(bytes).replaceAll('=', '');
+  }
+  
+  static String _generateCodeChallenge(String codeVerifier) {
+    final bytes = utf8.encode(codeVerifier);
+    final digest = sha256.convert(bytes);
+    return base64UrlEncode(digest.bytes).replaceAll('=', '');
+  }
+  
+  static Future<String> _buildAuthUrl() async {
+    // Generate PKCE parameters
+    final codeVerifier = _generateCodeVerifier();
+    final codeChallenge = _generateCodeChallenge(codeVerifier);
+    
+    // Store code verifier for later use in token exchange
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_codeVerifierKey, codeVerifier);
+    
     final params = {
       'client_id': AuthConfig.clientId,
       'response_type': 'code',
@@ -49,6 +74,8 @@ class AuthService {
       'scope': AuthConfig.scopes.join(' '),
       'response_mode': 'query',
       'state': 'state_${DateTime.now().millisecondsSinceEpoch}',
+      'code_challenge': codeChallenge,
+      'code_challenge_method': 'S256',
     };
     
     print('=== Building Auth URL ===');
@@ -56,6 +83,8 @@ class AuthService {
     print('Redirect URI: ${AuthConfig.currentRedirectUri}');
     print('Authority: ${AuthConfig.authority}');
     print('Scopes: ${AuthConfig.scopes.join(' ')}');
+    print('Code Challenge: $codeChallenge');
+    print('Code Verifier stored: ${codeVerifier.substring(0, 10)}...');
     
     final queryString = params.entries
         .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
@@ -71,11 +100,22 @@ class AuthService {
     
     print('Exchanging code for tokens at: $tokenUrl');
     
+    // Get the stored code verifier
+    final prefs = await SharedPreferences.getInstance();
+    final codeVerifier = prefs.getString(_codeVerifierKey);
+    
+    if (codeVerifier == null) {
+      throw Exception('Code verifier not found - this should not happen');
+    }
+    
+    print('Using code verifier: ${codeVerifier.substring(0, 10)}...');
+    
     final body = {
       'client_id': AuthConfig.clientId,
       'code': code,
       'redirect_uri': AuthConfig.currentRedirectUri,
       'grant_type': 'authorization_code',
+      'code_verifier': codeVerifier, // Add PKCE verifier
       'scope': AuthConfig.scopes.join(' '),
     };
     
@@ -101,12 +141,14 @@ class AuthService {
       
       final expiryTime = DateTime.now().add(Duration(seconds: expiresIn));
       
-      final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_accessTokenKey, accessToken);
       if (refreshToken != null) {
         await prefs.setString(_refreshTokenKey, refreshToken);
       }
       await prefs.setString(_tokenExpiryKey, expiryTime.toIso8601String());
+      
+      // Clean up the code verifier
+      await prefs.remove(_codeVerifierKey);
       
       // Extract user info from JWT token
       final userInfo = _extractUserInfoFromToken(accessToken);
@@ -115,6 +157,9 @@ class AuthService {
       // Ensure user exists in backend after token exchange
       await ensureUserExists();
     } else {
+      // Clean up the code verifier on error
+      await prefs.remove(_codeVerifierKey);
+      
       // More detailed error logging
       try {
         final errorData = json.decode(response.body);
