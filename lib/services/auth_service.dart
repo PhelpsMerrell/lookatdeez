@@ -51,12 +51,18 @@ class AuthService {
       'state': 'state_${DateTime.now().millisecondsSinceEpoch}',
     };
     
+    print('=== Building Auth URL ===');
+    print('Client ID: ${AuthConfig.clientId}');
+    print('Redirect URI: ${AuthConfig.currentRedirectUri}');
+    print('Authority: ${AuthConfig.authority}');
+    print('Scopes: ${AuthConfig.scopes.join(' ')}');
+    
     final queryString = params.entries
         .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
         .join('&');
     
     final authUrl = '${AuthConfig.authority}/oauth2/v2.0/authorize?$queryString';
-    print('Auth URL: $authUrl');
+    print('Full Auth URL: $authUrl');
     return authUrl;
   }
   
@@ -317,6 +323,7 @@ class AuthService {
         Uri.parse('$apiUrl/users/$microsoftUserId/profile'),
         headers: {
           'Authorization': bearerToken,
+          'x-user-id': microsoftUserId, // Add the required header
         },
       );
       

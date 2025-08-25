@@ -23,6 +23,19 @@ class _AuthCallbackPageState extends State<AuthCallbackPage> {
 
   Future<void> _processCallback() async {
     try {
+      print('=== Processing Auth Callback ===');
+      final currentUrl = Uri.base;
+      print('Current URL: $currentUrl');
+      print('Query parameters: ${currentUrl.queryParameters}');
+      
+      // Check for errors first
+      final error = currentUrl.queryParameters['error'];
+      if (error != null) {
+        final errorDescription = currentUrl.queryParameters['error_description'] ?? 'Unknown error';
+        print('OAuth error received: $error - $errorDescription');
+        throw Exception('OAuth error: $error - $errorDescription');
+      }
+      
       setState(() => _status = 'Exchanging authorization code...');
       await AuthService.initialize();
       
@@ -41,14 +54,6 @@ class _AuthCallbackPageState extends State<AuthCallbackPage> {
       final userCreated = await AuthService.ensureUserExists();
       if (!userCreated) {
         throw Exception('Failed to create/verify user account');
-      }
-      
-      setState(() => _status = 'Final verification...');
-      
-      // Final check
-      final isLoggedIn = await AuthService.isLoggedIn();
-      if (!isLoggedIn) {
-        throw Exception('Final login verification failed');
       }
       
       setState(() {
