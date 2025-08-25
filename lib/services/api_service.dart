@@ -106,25 +106,46 @@ class ApiService {
 
   static Future<Playlist> createPlaylist(String name) async {
     try {
+      print('=== DEBUG: Creating playlist ===');
+      print('Playlist name: "$name"');
+      
       final headers = await _headers;
+      print('Request headers: $headers');
+      
+      final requestBody = {
+        'title': name,
+        'isPublic': false,
+      };
+      print('Request body: $requestBody');
+      
+      final fullUrl = '$baseUrl/playlists';
+      print('Full URL: $fullUrl');
+      
       final response = await http.post(
-        Uri.parse('$baseUrl/playlists'),
+        Uri.parse(fullUrl),
         headers: headers,
-        body: json.encode({
-          'title': name,
-          'isPublic': false,
-        }),
+        body: json.encode(requestBody),
       );
       
+      print('Create playlist response status: ${response.statusCode}');
+      print('Create playlist response body: ${response.body}');
+      print('Create playlist response headers: ${response.headers}');
+      
       if (response.statusCode == 201 || response.statusCode == 200) {
-        return Playlist.fromJson(json.decode(response.body));
+        final responseData = json.decode(response.body);
+        print('Parsed response data: $responseData');
+        
+        final playlist = Playlist.fromJson(responseData);
+        print('Created playlist object - ID: "${playlist.id}", Name: "${playlist.name}"');
+        
+        return playlist;
       } else if (response.statusCode == 401) {
         throw Exception('Authentication required. Please log in again.');
       } else {
-        throw Exception('Failed to create playlist: ${response.statusCode}');
+        throw Exception('Failed to create playlist: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      print('Create error: $e');
+      print('Create playlist error: $e');
       rethrow;
     }
   }

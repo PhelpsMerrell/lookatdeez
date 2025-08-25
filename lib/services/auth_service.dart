@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:html' as html;
-import 'dart:math';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -47,7 +47,7 @@ class AuthService {
   
   // PKCE helper methods
   static String _generateCodeVerifier() {
-    final random = Random.secure();
+    final random = math.Random.secure();
     final bytes = List<int>.generate(32, (_) => random.nextInt(256));
     return base64UrlEncode(bytes).replaceAll('=', '');
   }
@@ -343,8 +343,7 @@ class AuthService {
     if (token != null) {
       print('=== DEBUG: Current Bearer Token ===');
       print('Token length: ${token.length}');
-      print('Token preview: ${token.substring(0, 50)}...');
-      print('Full token: $token');
+      print('Token preview: ${token.substring(0, math.min(50, token.length))}...');
       return 'Bearer $token';
     }
     return null;
