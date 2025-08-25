@@ -339,13 +339,46 @@ class AuthService {
   }
   
   static Future<String?> getBearerToken() async {
+    print('=== getBearerToken() DEBUG ===');
     final token = await getAccessToken();
+    print('Access token from getAccessToken(): ${token != null ? "EXISTS (${token.length} chars)" : "NULL"}');
+    
     if (token != null) {
-      print('=== DEBUG: Current Bearer Token ===');
-      print('Token length: ${token.length}');
       print('Token preview: ${token.substring(0, math.min(50, token.length))}...');
+      
+      // Validate token is not expired before returning
+      try {
+        final handler = JwtDecoder.decode(token);
+        final exp = handler['exp'];
+        if (exp != null) {
+          final expiry = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+          final now = DateTime.now();
+          print('Token expires at: $expiry');
+          print('Current time: $now');
+          print('Token is valid: ${now.isBefore(expiry)}');
+          
+          if (now.isAfter(expiry)) {
+            print('Token is expired, attempting refresh...');
+            final refreshed = await _refreshAccessToken();
+            if (refreshed) {
+              final newToken = await getAccessToken();
+              if (newToken != null) {
+                return 'Bearer $newToken';
+              }
+            }
+            print('Token refresh failed, returning null');
+            return null;
+          }
+        }
+      } catch (e) {
+        print('Error validating token expiry: $e');
+        // Continue anyway, let the server validate
+      }
+      
       return 'Bearer $token';
     }
+    
+    print('No access token available');
     return null;
   }
   
