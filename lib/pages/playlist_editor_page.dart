@@ -36,6 +36,11 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
       name: widget.playlist.name,
       videos: List.from(widget.playlist.videos),
     );
+    print('=== PlaylistEditorPage initialized ===');
+    print('Widget playlist ID: "${widget.playlist.id}"');
+    print('Widget playlist name: "${widget.playlist.name}"');
+    print('Local playlist ID: "${playlist.id}"');
+    print('Local playlist name: "${playlist.name}"');
   }
 
   @override
@@ -142,6 +147,11 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
       setState(() => isLoading = true);
       
       try {
+        print('=== About to call API addItemToPlaylist ===');
+        print('Using playlist ID: "${playlist.id}"');
+        print('Title: "${result['title']!}"');
+        print('URL: "${result['url']!}"');
+        
         // Call your actual API to add the item
         final newVideo = await ApiService.addItemToPlaylist(
           playlist.id,

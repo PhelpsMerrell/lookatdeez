@@ -150,9 +150,23 @@ class ApiService {
 
   static Future<VideoItem> addItemToPlaylist(String playlistId, String title, String url) async {
     try {
+      print('=== DEBUG: Adding item to playlist ===');
+      print('Playlist ID: "$playlistId"');
+      print('Title: "$title"');
+      print('URL: "$url"');
+      
+      if (playlistId.isEmpty) {
+        throw Exception('Playlist ID is empty!');
+      }
+      
       final headers = await _headers;
+      print('Headers: $headers');
+      
+      final fullUrl = '$baseUrl/playlists/$playlistId/items';
+      print('Full URL: $fullUrl');
+      
       final response = await http.post(
-        Uri.parse('$baseUrl/playlists/$playlistId/items'),
+        Uri.parse(fullUrl),
         headers: headers,
         body: json.encode({
           'title': title,
@@ -160,12 +174,15 @@ class ApiService {
         }),
       );
       
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+      
       if (response.statusCode == 201 || response.statusCode == 200) {
         return VideoItem.fromJson(json.decode(response.body));
       } else if (response.statusCode == 401) {
         throw Exception('Authentication required. Please log in again.');
       } else {
-        throw Exception('Failed to add item: ${response.statusCode}');
+        throw Exception('Failed to add item: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('Add item error: $e');

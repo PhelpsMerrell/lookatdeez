@@ -340,7 +340,14 @@ class AuthService {
   
   static Future<String?> getBearerToken() async {
     final token = await getAccessToken();
-    return token != null ? 'Bearer $token' : null;
+    if (token != null) {
+      print('=== DEBUG: Current Bearer Token ===');
+      print('Token length: ${token.length}');
+      print('Token preview: ${token.substring(0, 50)}...');
+      print('Full token: $token');
+      return 'Bearer $token';
+    }
+    return null;
   }
   
   static Future<bool> _checkUserExistsInBackend() async {
@@ -362,6 +369,8 @@ class AuthService {
           : 'https://lookatdeez-functions.azurewebsites.net/api';
       
       print('Checking if user exists in backend: $microsoftUserId');
+      print('Bearer token: ${bearerToken.substring(0, 20)}...');
+      print('API URL: $apiUrl/users/$microsoftUserId/profile');
       
       // Try to get user profile to see if they exist
       final response = await http.get(
@@ -369,10 +378,16 @@ class AuthService {
         headers: {
           'Authorization': bearerToken,
           'x-user-id': microsoftUserId, // Add the required header
+          'Content-Type': 'application/json',
         },
       );
       
       print('User profile check response: ${response.statusCode}');
+      print('Response headers: ${response.headers}');
+      if (response.statusCode != 200) {
+        print('Response body: ${response.body}');
+      }
+      
       if (response.statusCode == 200) {
         print('User exists in backend');
         return true;
