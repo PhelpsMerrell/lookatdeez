@@ -70,35 +70,35 @@ class AuthService {
     final params = {
       'client_id': AuthConfig.clientId,
       'response_type': 'code',
-      'redirect_uri': AuthConfig.currentRedirectUri,
+      'redirect_uri': AuthConfig.redirectUri,
       'scope': AuthConfig.scopes.join(' '),
       'response_mode': 'query',
       'state': 'state_${DateTime.now().millisecondsSinceEpoch}',
       'code_challenge': codeChallenge,
       'code_challenge_method': 'S256',
+      'p': AuthConfig.userFlow, // CIAM user flow
     };
     
-    print('=== Building Auth URL ===');
+    print('=== Building CIAM Auth URL ===');
     print('Client ID: ${AuthConfig.clientId}');
-    print('Redirect URI: ${AuthConfig.currentRedirectUri}');
+    print('Redirect URI: ${AuthConfig.redirectUri}');
     print('Authority: ${AuthConfig.authority}');
+    print('User Flow: ${AuthConfig.userFlow}');
     print('Scopes: ${AuthConfig.scopes.join(' ')}');
-    print('Code Challenge: $codeChallenge');
-    print('Code Verifier stored: ${codeVerifier.substring(0, 10)}...');
     
     final queryString = params.entries
         .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
         .join('&');
     
-    final authUrl = '${AuthConfig.authority}/oauth2/v2.0/authorize?$queryString';
-    print('Full Auth URL: $authUrl');
+    final authUrl = '${AuthConfig.signUpSignInUrl}&${queryString.replaceFirst('p=${AuthConfig.userFlow}&', '')}';
+    print('Full CIAM Auth URL: $authUrl');
     return authUrl;
   }
   
   static Future<void> _exchangeCodeForTokens(String code) async {
-    final tokenUrl = '${AuthConfig.authority}/oauth2/v2.0/token';
+    final tokenUrl = '${AuthConfig.tokenEndpoint}?p=${AuthConfig.userFlow}';
     
-    print('Exchanging code for tokens at: $tokenUrl');
+    print('Exchanging code for CIAM tokens at: $tokenUrl');
     
     // Get the stored code verifier
     final prefs = await SharedPreferences.getInstance();
@@ -108,18 +108,16 @@ class AuthService {
       throw Exception('Code verifier not found - this should not happen');
     }
     
-    print('Using code verifier: ${codeVerifier.substring(0, 10)}...');
-    
     final body = {
       'client_id': AuthConfig.clientId,
       'code': code,
-      'redirect_uri': AuthConfig.currentRedirectUri,
+      'redirect_uri': AuthConfig.redirectUri,
       'grant_type': 'authorization_code',
-      'code_verifier': codeVerifier, // Add PKCE verifier
+      'code_verifier': codeVerifier,
       'scope': AuthConfig.scopes.join(' '),
     };
     
-    print('Token exchange body: $body');
+    print('CIAM token exchange body: $body');
     
     final response = await http.post(
       Uri.parse(tokenUrl),
@@ -129,8 +127,8 @@ class AuthService {
           .join('&'),
     );
     
-    print('Token response status: ${response.statusCode}');
-    print('Token response body: ${response.body}');
+    print('CIAM token response status: ${response.statusCode}');
+    print('CIAM token response body: ${response.body}');
     
     if (response.statusCode == 200) {
       final tokenData = json.decode(response.body);
@@ -163,14 +161,14 @@ class AuthService {
       // More detailed error logging
       try {
         final errorData = json.decode(response.body);
-        print('Detailed error from Microsoft:');
+        print('Detailed CIAM error from Microsoft:');
         print('  Error: ${errorData['error']}');
         print('  Error Description: ${errorData['error_description']}');
         print('  Error URI: ${errorData['error_uri']}');
-        throw Exception('Token exchange failed: ${errorData['error']} - ${errorData['error_description']}');
+        throw Exception('CIAM token exchange failed: ${errorData['error']} - ${errorData['error_description']}');
       } catch (e) {
-        print('Could not parse error response, raw body: ${response.body}');
-        throw Exception('Token exchange failed: HTTP ${response.statusCode} - ${response.body}');
+        print('Could not parse CIAM error response, raw body: ${response.body}');
+        throw Exception('CIAM token exchange failed: HTTP ${response.statusCode} - ${response.body}');
       }
     }
   }
@@ -340,7 +338,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     
-    final logoutUrl = '${AuthConfig.authority}/oauth2/v2.0/logout?post_logout_redirect_uri=${Uri.encodeComponent(AuthConfig.currentRedirectUri)}';
+    final logoutUrl = '${AuthConfig.logoutEndpoint}?post_logout_redirect_uri=${Uri.encodeComponent(AuthConfig.postLogoutRedirectUri)}';
     html.window.location.href = logoutUrl;
   }
   

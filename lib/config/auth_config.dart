@@ -1,32 +1,43 @@
+import 'package:flutter/foundation.dart';
+
+// Azure AD B2C CIAM Configuration
 class AuthConfig {
-  // App registration
+  static const String tenantId = 'f8c9ea6d-89ab-4b1e-97db-dc03a426ec60';
   static const String clientId = 'f0749993-27a7-486f-930d-16a825e017bf';
-
-  // Tenant identifiers
-  static const String tenantName = 'lookatdeez';
-  static const String tenantId   = 'f8c9ea6d-89ab-4b1e-97db-dc03a426ec60';
-
-  // Use the correct CIAM authority format
-  static String get authority => 'https://$tenantName.ciamlogin.com/$tenantId';
-
-  // Redirect URIs (must exactly match those in your app registration)
-  static const String redirectUri = 'https://lookatdeez.com/auth/callback';
-  static const String redirectUriLocal = 'http://localhost:5173/auth/callback';
-
-  // Scopes
+  
+  // CIAM endpoints (B2C)
+  static const String authority = 'https://lookatdeez.ciamlogin.com/$tenantId';
+  static const String tokenEndpoint = '$authority/oauth2/v2.0/token';
+  static const String authEndpoint = '$authority/oauth2/v2.0/authorize';
+  static const String logoutEndpoint = '$authority/oauth2/v2.0/logout';
+  
+  // User flow for CIAM (sign up and sign in combined)
+  static const String userFlow = 'B2C_1_signupsignin1';
+  
+  // Redirect URIs
+  static const String redirectUri = kIsWeb 
+    ? (kDebugMode ? 'http://localhost:5173/auth/callback' : 'https://lookatdeez.com/auth/callback')
+    : 'msauth://com.example.lookatdeez/auth';
+  
+  static const String postLogoutRedirectUri = kIsWeb 
+    ? (kDebugMode ? 'http://localhost:5173' : 'https://lookatdeez.com')
+    : 'msauth://com.example.lookatdeez';
+    
+  // CIAM scopes
   static const List<String> scopes = [
     'openid',
-    'profile',
-    'email',
-    'offline_access',
+    'offline_access', // For refresh tokens
+    'https://lookatdeez.onmicrosoft.com/$clientId/access'
   ];
-
-  static String get currentRedirectUri {
-    // Check if we're on localhost or production
-    final currentHost = Uri.base.host;
-    if (currentHost == 'localhost' || currentHost == '127.0.0.1') {
-      return redirectUriLocal;
-    }
-    return redirectUri;
-  }
+  
+  // Token storage keys
+  static const String accessTokenKey = 'flutter.ms_access_token';
+  static const String refreshTokenKey = 'flutter.ms_refresh_token';
+  static const String expiryKey = 'flutter.ms_token_expiry';
+  static const String userIdKey = 'flutter.ms_user_id';
+  static const String emailKey = 'flutter.ms_email';
+  
+  // CIAM specific URLs
+  static String get signUpSignInUrl => '$authority/oauth2/v2.0/authorize?p=$userFlow';
+  static String get jwksUrl => '$authority/discovery/v2.0/keys?p=$userFlow';
 }
