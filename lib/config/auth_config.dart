@@ -27,7 +27,7 @@ class AuthConfig {
   static const List<String> scopes = [
     'openid',
     'offline_access', // For refresh tokens
-    'https://lookatdeez.onmicrosoft.com/$clientId/access'
+    'https://lookatdeez.onmicrosoft.com/44c46a0b-0c02-4e97-be76-cbe30edc3829/access' // Backend API scope
   ];
   
   // Token storage keys
