@@ -90,7 +90,7 @@ class AuthService {
         .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
         .join('&');
     
-    final authUrl = '${AuthConfig.signUpSignInUrl}&$queryString';
+    final authUrl = '${AuthConfig.signUpSignInUrl}?$queryString';
     print('Full CIAM Auth URL: $authUrl');
     return authUrl;
   }
