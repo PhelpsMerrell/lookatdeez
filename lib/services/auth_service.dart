@@ -9,10 +9,10 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 import '../config/auth_config.dart';
 
 class AuthService {
-  static const String _accessTokenKey = 'flutter.ms_access_token';
-  static const String _refreshTokenKey = 'flutter.ms_refresh_token';
-  static const String _tokenExpiryKey = 'flutter.ms_token_expiry';
-  static const String _userInfoKey = 'flutter.ms_user_info';
+  static const String _accessTokenKey = 'ms_access_token'; // Remove flutter prefix - it's added automatically
+  static const String _refreshTokenKey = 'ms_refresh_token';
+  static const String _tokenExpiryKey = 'ms_token_expiry';
+  static const String _userInfoKey = 'ms_user_info';
   static const String _codeVerifierKey = 'pkce_code_verifier';
   
   static Future<void> initialize() async {
