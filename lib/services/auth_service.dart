@@ -76,7 +76,7 @@ class AuthService {
       'state': 'state_${DateTime.now().millisecondsSinceEpoch}',
       'code_challenge': codeChallenge,
       'code_challenge_method': 'S256',
-      'p': AuthConfig.userFlow, // CIAM user flow
+      // Don't include 'p' here as it's already in signUpSignInUrl
     };
     
     print('=== Building CIAM Auth URL ===');
@@ -90,7 +90,7 @@ class AuthService {
         .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
         .join('&');
     
-    final authUrl = '${AuthConfig.signUpSignInUrl}&${queryString.replaceFirst('p=${AuthConfig.userFlow}&', '')}';
+    final authUrl = '${AuthConfig.signUpSignInUrl}&$queryString';
     print('Full CIAM Auth URL: $authUrl');
     return authUrl;
   }
