@@ -37,7 +37,7 @@ class AuthConfig {
   static const String userIdKey = 'flutter.ms_user_id';
   static const String emailKey = 'flutter.ms_email';
   
-  // CIAM specific URLs
-  static String get signUpSignInUrl => '$authority/oauth2/v2.0/authorize?p=$userFlow';
-  static String get jwksUrl => '$authority/discovery/v2.0/keys?p=$userFlow';
+  // CIAM specific URLs (CIAM doesn't use ?p= parameter)
+  static String get signUpSignInUrl => '$authority/oauth2/v2.0/authorize';
+  static String get jwksUrl => '$authority/discovery/v2.0/keys';
 }

@@ -96,7 +96,7 @@ class AuthService {
   }
   
   static Future<void> _exchangeCodeForTokens(String code) async {
-    final tokenUrl = '${AuthConfig.tokenEndpoint}?p=${AuthConfig.userFlow}';
+    final tokenUrl = AuthConfig.tokenEndpoint; // CIAM doesn't use ?p= parameter
     
     print('Exchanging code for CIAM tokens at: $tokenUrl');
     
