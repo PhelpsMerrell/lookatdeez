@@ -34,21 +34,45 @@ class _FriendsPageState extends State<FriendsPage> with TickerProviderStateMixin
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final futures = await Future.wait([
-        ApiService.getCurrentUserFriends(),
-        ApiService.getFriendRequests(),
-      ]);
+      print('Loading friends data...');
+      
+      // Load friends and requests separately to better handle errors
+      List<Friend> friendsList = [];
+      FriendRequestsEnvelope? requestsEnvelope;
+      
+      try {
+        print('Fetching current user friends...');
+        friendsList = await ApiService.getCurrentUserFriends();
+        print('Friends loaded: ${friendsList.length}');
+      } catch (e) {
+        print('Error loading friends: $e');
+        // Continue loading requests even if friends fail
+      }
+      
+      try {
+        print('Fetching friend requests...');
+        requestsEnvelope = await ApiService.getFriendRequests();
+        print('Requests loaded - Sent: ${requestsEnvelope.sent.length}, Received: ${requestsEnvelope.received.length}');
+      } catch (e) {
+        print('Error loading friend requests: $e');
+        requestsEnvelope = FriendRequestsEnvelope(sent: [], received: []);
+      }
       
       setState(() {
-        _friends = futures[0] as List<Friend>;
-        _requests = futures[1] as FriendRequestsEnvelope;
+        _friends = friendsList;
+        _requests = requestsEnvelope;
         _isLoading = false;
       });
     } catch (e) {
+      print('Unexpected error in _loadData: $e');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading friends: $e')),
+          SnackBar(
+            content: Text('Error loading friends: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     }

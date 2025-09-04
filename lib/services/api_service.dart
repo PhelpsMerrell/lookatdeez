@@ -256,23 +256,41 @@ class ApiService {
   
   static Future<List<Friend>> getUserFriends(String userId) async {
     try {
+      print('=== Getting friends for user: $userId ===');
       final headers = await _headers;
+      final url = '$baseUrl/users/$userId/friends';
+      print('Friends API URL: $url');
+      
       final response = await http.get(
-        Uri.parse('$baseUrl/users/$userId/friends'),
+        Uri.parse(url),
         headers: headers,
       );
       
+      print('Friends response status: ${response.statusCode}');
+      print('Friends response body: ${response.body}');
+      
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Friend.fromJson(json)).toList();
+        print('Parsed friends data: $data');
+        print('Number of friends: ${data.length}');
+        
+        final friends = data.map((json) {
+          print('Parsing friend JSON: $json');
+          return Friend.fromJson(json);
+        }).toList();
+        
+        print('Successfully parsed ${friends.length} friends');
+        return friends;
       } else if (response.statusCode == 401) {
         throw Exception('Authentication required. Please log in again.');
       } else {
-        throw Exception('Failed to load friends: ${response.statusCode}');
+        throw Exception('Failed to load friends: ${response.statusCode} - ${response.body}');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Get friends error: $e');
-      return [];
+      print('Stack trace: $stackTrace');
+      // Don't silently return empty list - rethrow the error so we can see it
+      rethrow;
     }
   }
 
