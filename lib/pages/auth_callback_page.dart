@@ -24,49 +24,33 @@ class _AuthCallbackPageState extends State<AuthCallbackPage> {
   Future<void> _processCallback() async {
     try {
       print('=== Processing Auth Callback ===');
-      final currentUrl = Uri.base;
-      print('Current URL: $currentUrl');
-      print('Query parameters: ${currentUrl.queryParameters}');
-      
-      // Check for errors first
-      final error = currentUrl.queryParameters['error'];
-      if (error != null) {
-        final errorDescription = currentUrl.queryParameters['error_description'] ?? 'Unknown error';
-        print('OAuth error received: $error - $errorDescription');
-        throw Exception('OAuth error: $error - $errorDescription');
-      }
-      
+
       setState(() => _status = 'Exchanging authorization code...');
-      await AuthService.initialize();
-      
-      setState(() => _status = 'Verifying tokens...');
-      
-      // Check if we have tokens first
-      final hasToken = await AuthService.getAccessToken() != null;
-      print('Has access token after initialize: $hasToken');
-      
-      if (!hasToken) {
-        throw Exception('No access token after authentication');
-      }
-      
-      setState(() => _status = 'Creating/verifying user account...');
-      
+
+      // This is the ONE place that exchanges the auth code for tokens.
+      await AuthService.handleAuthCallback();
+
+      setState(() => _status = 'Creating user account...');
+
       final userCreated = await AuthService.ensureUserExists();
       if (!userCreated) {
-        throw Exception('Failed to create/verify user account');
+        // User creation failed but tokens are valid — continue anyway.
+        // The user record will be created on the next API call that needs it.
+        print('Warning: ensureUserExists returned false, continuing anyway');
       }
-      
+
       setState(() {
         _status = 'Authentication successful!';
         _isProcessing = false;
       });
-      
-      await Future.delayed(const Duration(seconds: 1));
-      
+
+      await Future.delayed(const Duration(milliseconds: 500));
+
       if (mounted) {
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const PlaylistMenuPage()),
+          (route) => false,
         );
       }
     } catch (e) {
@@ -107,7 +91,7 @@ class _AuthCallbackPageState extends State<AuthCallbackPage> {
                   height: 80,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: _error != null 
+                      colors: _error != null
                           ? [Colors.red, Colors.redAccent]
                           : _isProcessing
                               ? [Colors.cyan, Colors.blue]
@@ -125,7 +109,7 @@ class _AuthCallbackPageState extends State<AuthCallbackPage> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  _error != null 
+                  _error != null
                       ? 'Authentication Failed'
                       : _isProcessing
                           ? 'Authenticating...'
@@ -159,9 +143,10 @@ class _AuthCallbackPageState extends State<AuthCallbackPage> {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: () => Navigator.pushReplacement(
+                    onPressed: () => Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(builder: (context) => const LoginPage()),
+                      (route) => false,
                     ),
                     icon: const Icon(Icons.refresh, color: Colors.white),
                     label: const Text('Try Again', style: TextStyle(color: Colors.white)),

@@ -27,10 +27,8 @@ class _ProfilePageState extends State<ProfilePage> {
     });
 
     try {
-      print('Loading user profile...');
       final profile = await ApiService.getCurrentUserProfile();
-      print('Profile loaded: $profile');
-      
+
       setState(() {
         userProfile = profile;
         isLoading = false;
@@ -38,31 +36,26 @@ class _ProfilePageState extends State<ProfilePage> {
       });
     } catch (e) {
       print('Profile API error: $e');
-      
-      // Fallback to local data if API fails
+
+      // Fallback to local data if API fails — using the correct keys
       try {
         final prefs = await SharedPreferences.getInstance();
         final fallbackProfile = {
-          'displayName': prefs.getString('displayName') ?? 'Unknown User',
-          'email': prefs.getString('email') ?? 'unknown@example.com',
-          'id': prefs.getString('userId') ?? 'unknown',
+          'displayName': prefs.getString('userName') ?? 'Unknown User',
+          'email': prefs.getString('userEmail') ?? 'unknown@example.com',
+          'id': prefs.getString('microsoftUserId') ?? 'unknown',
           'createdAt': DateTime.now().toIso8601String(),
         };
-        
+
         setState(() {
           userProfile = fallbackProfile;
           isLoading = false;
-          errorMessage = 'Using offline data';
+          errorMessage = 'Using offline data — backend may be unavailable';
         });
       } catch (fallbackError) {
         print('Fallback error: $fallbackError');
         setState(() {
-          userProfile = {
-            'displayName': 'Error Loading Profile',
-            'email': 'error@example.com',
-            'id': 'error',
-            'createdAt': DateTime.now().toIso8601String(),
-          };
+          userProfile = null;
           isLoading = false;
           errorMessage = 'Failed to load profile: $e';
         });
@@ -91,7 +84,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     children: [
                       const Icon(Icons.error_outline, size: 64, color: Colors.red),
                       const SizedBox(height: 16),
-                      const Text('Failed to load profile'),
+                      Text(errorMessage ?? 'Failed to load profile'),
                       const SizedBox(height: 8),
                       ElevatedButton(
                         onPressed: loadUserProfile,
@@ -136,8 +129,8 @@ class _ProfilePageState extends State<ProfilePage> {
                               radius: 36,
                               backgroundColor: Theme.of(context).colorScheme.primary,
                               child: Text(
-                                _getDisplayName().isNotEmpty 
-                                    ? _getDisplayName()[0].toUpperCase() 
+                                _getDisplayName().isNotEmpty
+                                    ? _getDisplayName()[0].toUpperCase()
                                     : '?',
                                 style: TextStyle(
                                   fontSize: 24,
@@ -179,25 +172,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 32),
-                      // Debug info (remove in production)
-                      if (userProfile != null) ...[
-                        const Divider(),
-                        const Text('Debug Info:', style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            userProfile.toString(),
-                            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -205,19 +179,26 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   String _getDisplayName() {
-    return userProfile?['displayName']?.toString() ?? 'Unknown User';
+    // Handle both camelCase and PascalCase from backend
+    return userProfile?['displayName']?.toString()
+        ?? userProfile?['DisplayName']?.toString()
+        ?? 'Unknown User';
   }
 
   String _getEmail() {
-    return userProfile?['email']?.toString() ?? 'unknown@example.com';
+    return userProfile?['email']?.toString()
+        ?? userProfile?['Email']?.toString()
+        ?? 'unknown@example.com';
   }
 
   String _getUserId() {
-    return userProfile?['id']?.toString() ?? 'unknown';
+    return userProfile?['id']?.toString()
+        ?? userProfile?['Id']?.toString()
+        ?? 'unknown';
   }
 
   DateTime? _getCreatedAt() {
-    final createdAtStr = userProfile?['createdAt']?.toString();
+    final createdAtStr = (userProfile?['createdAt'] ?? userProfile?['CreatedAt'])?.toString();
     if (createdAtStr != null) {
       return DateTime.tryParse(createdAtStr);
     }

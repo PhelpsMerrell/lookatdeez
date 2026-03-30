@@ -6,14 +6,13 @@ import 'services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Microsoft Auth
+
   try {
     await AuthService.initialize();
   } catch (e) {
     print('Auth initialization failed: $e');
   }
-  
+
   runApp(const PlaylistApp());
 }
 
@@ -22,16 +21,19 @@ class PlaylistApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // If the browser landed on /auth/callback, go straight there.
+    // Otherwise use the normal AuthGate flow.
+    final isCallback = Uri.base.path == '/auth/callback';
+
     return MaterialApp(
       title: 'Look at Deez',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const AuthGate(), // Use AuthGate as the initial widget
+      home: isCallback ? const AuthCallbackPage() : const AuthGate(),
       routes: {
         '/login': (context) => const LoginPage(),
-        '/auth/callback': (context) => const AuthCallbackPage(),
         '/playlists': (context) => const PlaylistMenuPage(),
       },
       debugShowCheckedModeBanner: false,
@@ -39,7 +41,6 @@ class PlaylistApp extends StatelessWidget {
   }
 }
 
-// New AuthGate widget to handle initial authentication state
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -49,7 +50,6 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   bool _isLoading = true;
-  bool _isAuthenticated = false;
 
   @override
   void initState() {
@@ -59,43 +59,23 @@ class _AuthGateState extends State<AuthGate> {
 
   Future<void> _checkAuthState() async {
     try {
-      // Check current URL for auth callback
-      final currentPath = Uri.base.path;
-      if (currentPath == '/auth/callback') {
-        // Let AuthCallbackPage handle the callback
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const AuthCallbackPage()),
-        );
-        return;
-      }
-
       print('AuthGate: Checking authentication state...');
       final isLoggedIn = await AuthService.isLoggedIn();
       print('AuthGate: User is logged in: $isLoggedIn');
-      
-      if (mounted) {
-        setState(() {
-          _isAuthenticated = isLoggedIn;
-          _isLoading = false;
-        });
-        
-        if (isLoggedIn) {
-          // Navigate to main app
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const PlaylistMenuPage()),
-          );
-        }
+
+      if (isLoggedIn && mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const PlaylistMenuPage()),
+        );
+        return;
       }
     } catch (e) {
       print('AuthGate error: $e');
-      if (mounted) {
-        setState(() {
-          _isAuthenticated = false;
-          _isLoading = false;
-        });
-      }
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -116,15 +96,12 @@ class _AuthGateState extends State<AuthGate> {
             ),
           ),
           child: const Center(
-            child: CircularProgressIndicator(
-              color: Colors.cyan,
-            ),
+            child: CircularProgressIndicator(color: Colors.cyan),
           ),
         ),
       );
     }
 
-    // Show login page if not authenticated
     return const LoginPage();
   }
 }

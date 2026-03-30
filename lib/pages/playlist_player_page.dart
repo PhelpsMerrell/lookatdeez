@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/playlist.dart';
@@ -70,7 +71,7 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
 
   Future<void> openVideoUrl() async {
     setState(() => isLoading = true);
-    
+
     try {
       final uri = Uri.parse(currentVideo.url);
       if (await canLaunchUrl(uri)) {
@@ -223,7 +224,7 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
                   itemBuilder: (context, index) {
                     final video = widget.playlist.videos[index];
                     final parsedVideo = parsedVideos[index];
-                    
+
                     return Container(
                       margin: const EdgeInsets.all(20),
                       child: Column(
@@ -248,15 +249,16 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          
+
                           const SizedBox(height: 16),
-                          
-                          // DEBUG: Show parsed video info (remove this in production)
-                          VideoDebugWidget(
-                            url: video.url,
-                            parsedVideo: parsedVideo,
-                          ),
-                          
+
+                          // Only show debug info in debug builds
+                          if (kDebugMode)
+                            VideoDebugWidget(
+                              url: video.url,
+                              parsedVideo: parsedVideo,
+                            ),
+
                           // Video Player Area
                           Expanded(
                             child: Container(
@@ -271,9 +273,9 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
                               ),
                             ),
                           ),
-                          
+
                           const SizedBox(height: 16),
-                          
+
                           // Video Info & Actions
                           Container(
                             width: double.infinity,
@@ -322,9 +324,9 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
                                     ),
                                   ],
                                 ),
-                                
+
                                 const SizedBox(height: 12),
-                                
+
                                 // URL Display (truncated)
                                 Text(
                                   video.url,
@@ -335,16 +337,16 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                
+
                                 const SizedBox(height: 16),
-                                
+
                                 // Action Buttons
                                 Row(
                                   children: [
                                     Expanded(
                                       child: ElevatedButton.icon(
                                         onPressed: isLoading ? null : openVideoUrl,
-                                        icon: isLoading 
+                                        icon: isLoading
                                             ? const SizedBox(
                                                 width: 16,
                                                 height: 16,
@@ -382,22 +384,19 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    // Previous Button
                     IconButton(
                       onPressed: hasPreviousVideo ? goToPrevious : null,
                       icon: const Icon(Icons.skip_previous, size: 36),
                       style: IconButton.styleFrom(
-                        backgroundColor: hasPreviousVideo 
-                            ? Colors.white.withOpacity(0.1) 
+                        backgroundColor: hasPreviousVideo
+                            ? Colors.white.withOpacity(0.1)
                             : Colors.transparent,
-                        foregroundColor: hasPreviousVideo 
-                            ? Colors.white 
+                        foregroundColor: hasPreviousVideo
+                            ? Colors.white
                             : Colors.white.withOpacity(0.3),
                         padding: const EdgeInsets.all(16),
                       ),
                     ),
-                    
-                    // Video Counter with Platform Icons
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
@@ -423,17 +422,15 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
                         ],
                       ),
                     ),
-                    
-                    // Next Button
                     IconButton(
                       onPressed: hasNextVideo ? goToNext : null,
                       icon: const Icon(Icons.skip_next, size: 36),
                       style: IconButton.styleFrom(
-                        backgroundColor: hasNextVideo 
-                            ? Colors.white.withOpacity(0.1) 
+                        backgroundColor: hasNextVideo
+                            ? Colors.white.withOpacity(0.1)
                             : Colors.transparent,
-                        foregroundColor: hasNextVideo 
-                            ? Colors.white 
+                        foregroundColor: hasNextVideo
+                            ? Colors.white
                             : Colors.white.withOpacity(0.3),
                         padding: const EdgeInsets.all(16),
                       ),

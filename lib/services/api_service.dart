@@ -1,6 +1,5 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/playlist.dart';
 import '../models/video_item.dart';
 import '../models/friend.dart';
@@ -23,7 +22,6 @@ class ApiService {
       'Content-Type': 'application/json',
     };
     
-    // Use JWT Bearer token authentication
     final bearerToken = await AuthService.getBearerToken();
     if (bearerToken != null) {
       headers['Authorization'] = bearerToken;
@@ -32,227 +30,143 @@ class ApiService {
     return headers;
   }
 
-  // Add user profile methods
+  // ==== USER PROFILE ====
+
   static Future<Map<String, dynamic>> getUserProfile(String userId) async {
-    try {
-      print('Calling getUserProfile for userId: $userId');
-      final headers = await _headers;
-      print('Headers: $headers');
-      
-      final url = '$baseUrl/users/$userId/profile';
-      print('URL: $url');
-      
-      final response = await http.get(
-        Uri.parse(url),
-        headers: headers,
-      );
-      
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-      
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else if (response.statusCode == 401) {
-        throw Exception('Authentication required. Please log in again.');
-      } else {
-        throw Exception('Failed to load profile: ${response.statusCode} - ${response.body}');
-      }
-    } catch (e) {
-      print('Profile API Error: $e');
-      rethrow;
+    final headers = await _headers;
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/$userId/profile'),
+      headers: headers,
+    );
+    
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else if (response.statusCode == 401) {
+      throw Exception('Authentication required. Please log in again.');
+    } else {
+      throw Exception('Failed to load profile: ${response.statusCode} - ${response.body}');
     }
   }
 
   static Future<Map<String, dynamic>> getCurrentUserProfile() async {
-    final userId = await AuthService.getMicrosoftUserId(); // Use Microsoft ID as that's what backend expects
+    final userId = await AuthService.getMicrosoftUserId();
     if (userId == null) {
       throw Exception('User ID not found. Please log in again.');
     }
     return getUserProfile(userId);
   }
+
+  // ==== PLAYLISTS ====
   
   static Future<List<Playlist>> getPlaylists() async {
-    try {
-      final headers = await _headers;
-      final response = await http.get(
-        Uri.parse('$baseUrl/playlists'),
-        headers: headers,
-      );
+    final headers = await _headers;
+    final response = await http.get(
+      Uri.parse('$baseUrl/playlists'),
+      headers: headers,
+    );
+    
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final List<dynamic> owned = data['owned'] ?? [];
+      final List<dynamic> shared = data['shared'] ?? [];
       
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<dynamic> owned = data['owned'] ?? [];
-        final List<dynamic> shared = data['shared'] ?? [];
-        
-        final allPlaylists = [...owned, ...shared];
-        
-        // Remove duplicates by ID
-        final uniquePlaylists = <String, Map<String, dynamic>>{};
-        for (var playlist in allPlaylists) {
-          uniquePlaylists[playlist['id']] = playlist;
-        }
-        
-        return uniquePlaylists.values.map((json) => Playlist.fromJson(json)).toList();
-      } else if (response.statusCode == 401) {
-        throw Exception('Authentication required. Please log in again.');
-      } else {
-        throw Exception('Failed to load playlists: ${response.statusCode}');
+      final allPlaylists = [...owned, ...shared];
+      
+      final uniquePlaylists = <String, Map<String, dynamic>>{};
+      for (var playlist in allPlaylists) {
+        uniquePlaylists[playlist['id']] = playlist;
       }
-    } catch (e) {
-      print('API Error: $e');
-      rethrow;
+      
+      return uniquePlaylists.values.map((json) => Playlist.fromJson(json)).toList();
+    } else if (response.statusCode == 401) {
+      throw Exception('Authentication required. Please log in again.');
+    } else {
+      throw Exception('Failed to load playlists: ${response.statusCode}');
     }
   }
 
   static Future<Playlist> createPlaylist(String name) async {
-    try {
-      print('=== DEBUG: Creating playlist ===');
-      print('Playlist name: "$name"');
-      
-      final headers = await _headers;
-      print('Request headers: $headers');
-      
-      final requestBody = {
-        'title': name,
-        'isPublic': false,
-      };
-      print('Request body: $requestBody');
-      
-      final fullUrl = '$baseUrl/playlists';
-      print('Full URL: $fullUrl');
-      
-      final response = await http.post(
-        Uri.parse(fullUrl),
-        headers: headers,
-        body: json.encode(requestBody),
-      );
-      
-      print('Create playlist response status: ${response.statusCode}');
-      print('Create playlist response body: ${response.body}');
-      print('Create playlist response headers: ${response.headers}');
-      
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        print('Parsed response data: $responseData');
-        
-        final playlist = Playlist.fromJson(responseData);
-        print('Created playlist object - ID: "${playlist.id}", Name: "${playlist.name}"');
-        
-        return playlist;
-      } else if (response.statusCode == 401) {
-        throw Exception('Authentication required. Please log in again.');
-      } else {
-        throw Exception('Failed to create playlist: ${response.statusCode} - ${response.body}');
-      }
-    } catch (e) {
-      print('Create playlist error: $e');
-      rethrow;
+    final headers = await _headers;
+    final response = await http.post(
+      Uri.parse('$baseUrl/playlists'),
+      headers: headers,
+      body: json.encode({'title': name, 'isPublic': false}),
+    );
+    
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return Playlist.fromJson(json.decode(response.body));
+    } else if (response.statusCode == 401) {
+      throw Exception('Authentication required. Please log in again.');
+    } else {
+      throw Exception('Failed to create playlist: ${response.statusCode} - ${response.body}');
     }
   }
 
   static Future<void> deletePlaylist(String playlistId) async {
-    try {
-      final headers = await _headers;
-      final response = await http.delete(
-        Uri.parse('$baseUrl/playlists/$playlistId'),
-        headers: headers,
-      );
-      
-      if (response.statusCode == 401) {
-        throw Exception('Authentication required. Please log in again.');
-      } else if (response.statusCode != 204) {
-        throw Exception('Failed to delete playlist: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Delete error: $e');
-      rethrow;
+    final headers = await _headers;
+    final response = await http.delete(
+      Uri.parse('$baseUrl/playlists/$playlistId'),
+      headers: headers,
+    );
+    
+    if (response.statusCode == 401) {
+      throw Exception('Authentication required. Please log in again.');
+    } else if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Failed to delete playlist: ${response.statusCode}');
     }
   }
 
   static Future<VideoItem> addItemToPlaylist(String playlistId, String title, String url) async {
-    try {
-      print('=== DEBUG: Adding item to playlist ===');
-      print('Playlist ID: "$playlistId"');
-      print('Title: "$title"');
-      print('URL: "$url"');
-      
-      if (playlistId.isEmpty) {
-        throw Exception('Playlist ID is empty!');
-      }
-      
-      final headers = await _headers;
-      print('Headers: $headers');
-      
-      final fullUrl = '$baseUrl/playlists/$playlistId/items';
-      print('Full URL: $fullUrl');
-      
-      final response = await http.post(
-        Uri.parse(fullUrl),
-        headers: headers,
-        body: json.encode({
-          'title': title,
-          'url': url,
-        }),
-      );
-      
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-      
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        return VideoItem.fromJson(json.decode(response.body));
-      } else if (response.statusCode == 401) {
-        throw Exception('Authentication required. Please log in again.');
-      } else {
-        throw Exception('Failed to add item: ${response.statusCode} - ${response.body}');
-      }
-    } catch (e) {
-      print('Add item error: $e');
-      rethrow;
+    if (playlistId.isEmpty) {
+      throw Exception('Playlist ID is empty!');
+    }
+    
+    final headers = await _headers;
+    final response = await http.post(
+      Uri.parse('$baseUrl/playlists/$playlistId/items'),
+      headers: headers,
+      body: json.encode({'title': title, 'url': url}),
+    );
+    
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return VideoItem.fromJson(json.decode(response.body));
+    } else if (response.statusCode == 401) {
+      throw Exception('Authentication required. Please log in again.');
+    } else {
+      throw Exception('Failed to add item: ${response.statusCode} - ${response.body}');
     }
   }
 
   static Future<void> removeItemFromPlaylist(String playlistId, String itemId) async {
-    try {
-      final headers = await _headers;
-      final response = await http.delete(
-        Uri.parse('$baseUrl/playlists/$playlistId/items/$itemId'),
-        headers: headers,
-      );
-      
-      if (response.statusCode == 401) {
-        throw Exception('Authentication required. Please log in again.');
-      } else if (response.statusCode != 204) {
-        throw Exception('Failed to remove item: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Remove item error: $e');
-      rethrow;
+    final headers = await _headers;
+    final response = await http.delete(
+      Uri.parse('$baseUrl/playlists/$playlistId/items/$itemId'),
+      headers: headers,
+    );
+    
+    if (response.statusCode == 401) {
+      throw Exception('Authentication required. Please log in again.');
+    } else if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Failed to remove item: ${response.statusCode}');
     }
   }
 
   static Future<void> reorderPlaylistItems(String playlistId, List<String> itemOrder) async {
-    try {
-      final headers = await _headers;
-      final response = await http.put(
-        Uri.parse('$baseUrl/playlists/$playlistId/items/order'),
-        headers: headers,
-        body: json.encode({
-          'itemOrder': itemOrder,
-        }),
-      );
-      
-      if (response.statusCode == 401) {
-        throw Exception('Authentication required. Please log in again.');
-      } else if (response.statusCode != 204) {
-        throw Exception('Failed to reorder items: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Reorder items error: $e');
-      rethrow;
+    final headers = await _headers;
+    final response = await http.put(
+      Uri.parse('$baseUrl/playlists/$playlistId/items/order'),
+      headers: headers,
+      body: json.encode({'itemOrder': itemOrder}),
+    );
+    
+    if (response.statusCode == 401) {
+      throw Exception('Authentication required. Please log in again.');
+    } else if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Failed to reorder items: ${response.statusCode}');
     }
   }
 
-  // ==== FRIEND MANAGEMENT METHODS ====
+  // ==== FRIEND MANAGEMENT ====
   
   static Future<List<Friend>> getUserFriends(String userId) async {
     try {
@@ -295,7 +209,7 @@ class ApiService {
   }
 
   static Future<List<Friend>> getCurrentUserFriends() async {
-    final userId = await AuthService.getMicrosoftUserId(); // Use Microsoft ID
+    final userId = await AuthService.getMicrosoftUserId();
     if (userId == null) {
       throw Exception('User ID not found. Please log in again.');
     }
@@ -303,129 +217,100 @@ class ApiService {
   }
 
   static Future<FriendRequest> sendFriendRequest(String toUserId) async {
-    try {
-      final headers = await _headers;
-      final response = await http.post(
-        Uri.parse('$baseUrl/friend-requests'),
-        headers: headers,
-        body: json.encode({
-          'toUserId': toUserId,
-        }),
-      );
-      
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        return FriendRequest.fromJson(json.decode(response.body));
-      } else if (response.statusCode == 401) {
-        throw Exception('Authentication required. Please log in again.');
-      } else if (response.statusCode == 400) {
-        String errorMessage = 'Bad request';
-        try {
-          final errorBody = response.body;
-          if (errorBody.isNotEmpty) {
-            if (errorBody.startsWith('{')) {
-              final errorJson = json.decode(errorBody);
-              errorMessage = errorJson['error'] ?? errorBody;
-            } else {
-              errorMessage = errorBody;
-            }
+    final headers = await _headers;
+    final response = await http.post(
+      Uri.parse('$baseUrl/friend-requests'),
+      headers: headers,
+      body: json.encode({'toUserId': toUserId}),
+    );
+    
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return FriendRequest.fromJson(json.decode(response.body));
+    } else if (response.statusCode == 401) {
+      throw Exception('Authentication required. Please log in again.');
+    } else if (response.statusCode == 400) {
+      String errorMessage = 'Bad request';
+      try {
+        final errorBody = response.body;
+        if (errorBody.isNotEmpty) {
+          if (errorBody.startsWith('{')) {
+            final errorJson = json.decode(errorBody);
+            errorMessage = errorJson['error'] ?? errorBody;
+          } else {
+            errorMessage = errorBody;
           }
-        } catch (parseError) {
-          errorMessage = response.body.isNotEmpty ? response.body : 'Unknown error';
         }
-        throw FriendRequestException(errorMessage);
-      } else {
-        throw Exception('Failed to send friend request: ${response.statusCode}');
+      } catch (_) {
+        errorMessage = response.body.isNotEmpty ? response.body : 'Unknown error';
       }
-    } catch (e) {
-      print('Send friend request error: $e');
-      rethrow;
+      throw FriendRequestException(errorMessage);
+    } else {
+      throw Exception('Failed to send friend request: ${response.statusCode} - ${response.body}');
     }
   }
 
   static Future<FriendRequestsEnvelope> getFriendRequests() async {
-    try {
-      final headers = await _headers;
-      final response = await http.get(
-        Uri.parse('$baseUrl/friend-requests'),
-        headers: headers,
-      );
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return FriendRequestsEnvelope.fromJson(data);
-      } else if (response.statusCode == 401) {
-        throw Exception('Authentication required. Please log in again.');
-      } else {
-        throw Exception('Failed to load friend requests: ${response.statusCode} - ${response.body}');
-      }
-    } catch (e) {
-      print('Get friend requests error: $e');
-      return FriendRequestsEnvelope(sent: [], received: []);
+    final headers = await _headers;
+    final response = await http.get(
+      Uri.parse('$baseUrl/friend-requests'),
+      headers: headers,
+    );
+    
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return FriendRequestsEnvelope.fromJson(data);
+    } else if (response.statusCode == 401) {
+      throw Exception('Authentication required. Please log in again.');
+    } else {
+      throw Exception('Failed to load friend requests: ${response.statusCode} - ${response.body}');
     }
   }
 
   static Future<FriendRequest> updateFriendRequest(String requestId, FriendRequestStatus status) async {
-    try {
-      final headers = await _headers;
-      final response = await http.put(
-        Uri.parse('$baseUrl/friend-requests/$requestId'),
-        headers: headers,
-        body: json.encode({
-          'status': _statusToInt(status),
-        }),
-      );
-      
-      if (response.statusCode == 200) {
-        return FriendRequest.fromJson(json.decode(response.body));
-      } else if (response.statusCode == 401) {
-        throw Exception('Authentication required. Please log in again.');
-      } else {
-        throw Exception('Failed to update friend request: ${response.statusCode} - ${response.body}');
-      }
-    } catch (e) {
-      print('Update friend request error: $e');
-      rethrow;
+    final headers = await _headers;
+    final response = await http.put(
+      Uri.parse('$baseUrl/friend-requests/$requestId'),
+      headers: headers,
+      body: json.encode({'status': _statusToInt(status)}),
+    );
+    
+    if (response.statusCode == 200) {
+      return FriendRequest.fromJson(json.decode(response.body));
+    } else if (response.statusCode == 401) {
+      throw Exception('Authentication required. Please log in again.');
+    } else {
+      throw Exception('Failed to update friend request: ${response.statusCode} - ${response.body}');
     }
   }
 
   static Future<void> removeFriend(String friendId) async {
-    try {
-      final headers = await _headers;
-      final response = await http.delete(
-        Uri.parse('$baseUrl/friends/$friendId'),
-        headers: headers,
-      );
-      
-      if (response.statusCode == 401) {
-        throw Exception('Authentication required. Please log in again.');
-      } else if (response.statusCode != 204) {
-        throw Exception('Failed to remove friend: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Remove friend error: $e');
-      rethrow;
+    final headers = await _headers;
+    final response = await http.delete(
+      Uri.parse('$baseUrl/friends/$friendId'),
+      headers: headers,
+    );
+    
+    if (response.statusCode == 401) {
+      throw Exception('Authentication required. Please log in again.');
+    } else if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Failed to remove friend: ${response.statusCode} - ${response.body}');
     }
   }
 
   static Future<List<User>> searchUsers(String searchTerm) async {
-    try {
-      final headers = await _headers;
-      final response = await http.get(
-        Uri.parse('$baseUrl/users/search?q=${Uri.encodeQueryComponent(searchTerm)}'),
-        headers: headers,
-      );
-      
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => User.fromJson(json)).toList();
-      } else if (response.statusCode == 401) {
-        throw Exception('Authentication required. Please log in again.');
-      } else {
-        throw Exception('Failed to search users: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Search users error: $e');
-      return [];
+    final headers = await _headers;
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/search?q=${Uri.encodeQueryComponent(searchTerm)}'),
+      headers: headers,
+    );
+    
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((json) => User.fromJson(json)).toList();
+    } else if (response.statusCode == 401) {
+      throw Exception('Authentication required. Please log in again.');
+    } else {
+      throw Exception('Failed to search users: ${response.statusCode} - ${response.body}');
     }
   }
 
