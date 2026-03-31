@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'playlist_menu_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,6 +11,13 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   bool _isLoading = false;
+  bool _isRegisterMode = false;
+  String? _errorMessage;
+
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _displayNameController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
   late AnimationController _snowflakeController;
   late AnimationController _fadeController;
@@ -21,37 +29,79 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       duration: const Duration(seconds: 8),
       vsync: this,
     )..repeat();
-
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     )..forward();
-    // AuthGate already checked if user is logged in before showing this page.
-    // No redundant _checkExistingAuth() needed here.
   }
 
   @override
   void dispose() {
     _snowflakeController.dispose();
     _fadeController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _displayNameController.dispose();
     super.dispose();
   }
 
-  void _handleSubmit() async {
-    setState(() => _isLoading = true);
+  Future<void> _handleEmailAuth() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
-      // This redirects the browser to Microsoft login — page will unload.
-      await AuthService.login();
+      Map<String, dynamic> result;
+
+      if (_isRegisterMode) {
+        result = await AuthService.registerWithEmail(
+          email: _emailController.text,
+          password: _passwordController.text,
+          displayName: _displayNameController.text,
+        );
+      } else {
+        result = await AuthService.loginWithEmail(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      }
+
+      if (result['success'] == true) {
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const PlaylistMenuPage()),
+            (route) => false,
+          );
+        }
+      } else {
+        setState(() => _errorMessage = result['error']);
+      }
+    } catch (e) {
+      setState(() => _errorMessage = 'Something went wrong: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleMicrosoftLogin() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await AuthService.loginWithMicrosoft();
+      // Browser redirects — page unloads from here
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Authentication failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        setState(() => _isLoading = false);
+        setState(() {
+          _errorMessage = 'Microsoft sign-in failed: $e';
+          _isLoading = false;
+        });
       }
     }
   }
@@ -78,6 +128,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               child: FadeTransition(
                 opacity: _fadeController,
                 child: Container(
+                  constraints: const BoxConstraints(maxWidth: 420),
                   padding: const EdgeInsets.all(32),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.1),
@@ -96,94 +147,186 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                     children: [
                       // Logo
                       Container(
-                        width: 80,
-                        height: 80,
+                        width: 72,
+                        height: 72,
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
                             colors: [Colors.cyan, Colors.blue],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
                           ),
                           shape: BoxShape.circle,
                         ),
                         child: RotationTransition(
                           turns: _snowflakeController,
-                          child: const Icon(
-                            Icons.ac_unit,
-                            color: Colors.white,
-                            size: 40,
-                          ),
+                          child: const Icon(Icons.ac_unit, color: Colors.white, size: 36),
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Welcome to Look at Deez',
-                        style: TextStyle(
-                          fontSize: 28,
+                      const SizedBox(height: 20),
+                      Text(
+                        _isRegisterMode ? 'Create Account' : 'Welcome Back',
+                        style: const TextStyle(
+                          fontSize: 26,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       const Text(
-                        'Create and share your music playlists',
+                        'Create and share your playlists',
                         style: TextStyle(fontSize: 14, color: Colors.white70),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 28),
 
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        margin: const EdgeInsets.only(bottom: 32),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                      // Error message
+                      if (_errorMessage != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
+                          ),
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                        child: const Text(
-                          'Sign in securely with Microsoft. Your account will be created automatically on first sign-in.',
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
-                          textAlign: TextAlign.center,
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Email + password form
+                      Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            if (_isRegisterMode) ...[
+                              _buildTextField(
+                                controller: _displayNameController,
+                                label: 'Display Name',
+                                icon: Icons.person_outline,
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+                              ),
+                              const SizedBox(height: 14),
+                            ],
+                            _buildTextField(
+                              controller: _emailController,
+                              label: 'Email',
+                              icon: Icons.email_outlined,
+                              keyboardType: TextInputType.emailAddress,
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) return 'Email is required';
+                                if (!v.contains('@')) return 'Enter a valid email';
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                            _buildTextField(
+                              controller: _passwordController,
+                              label: 'Password',
+                              icon: Icons.lock_outline,
+                              obscure: true,
+                              validator: (v) {
+                                if (v == null || v.isEmpty) return 'Password is required';
+                                if (_isRegisterMode && v.length < 8) return 'At least 8 characters';
+                                return null;
+                              },
+                            ),
+                          ],
                         ),
                       ),
+                      const SizedBox(height: 20),
 
-                      // Sign-in button
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 24),
-                        child: ElevatedButton.icon(
-                          onPressed: _isLoading ? null : _handleSubmit,
-                          icon: _isLoading
+                      // Submit button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _handleEmailAuth,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.cyan.withValues(alpha: 0.9),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: _isLoading
                               ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
+                                  width: 22,
+                                  height: 22,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Icon(Icons.login, color: Colors.white),
-                          label: Text(
-                            _isLoading ? 'Signing in...' : 'Sign in',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              : Text(
+                                  _isRegisterMode ? 'Create Account' : 'Sign In',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Toggle register/login
+                      TextButton(
+                        onPressed: _isLoading
+                            ? null
+                            : () {
+                                setState(() {
+                                  _isRegisterMode = !_isRegisterMode;
+                                  _errorMessage = null;
+                                });
+                              },
+                        child: Text(
+                          _isRegisterMode
+                              ? 'Already have an account? Sign in'
+                              : "Don't have an account? Register",
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ),
+
+                      // Divider
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Row(
+                          children: [
+                            Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.3))),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: Text('or', style: TextStyle(color: Colors.white54, fontSize: 13)),
                             ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.cyan.withValues(alpha: 0.8),
+                            Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.3))),
+                          ],
+                        ),
+                      ),
+
+                      // Microsoft sign-in button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          onPressed: _isLoading ? null : _handleMicrosoftLogin,
+                          icon: const Icon(Icons.business, size: 20),
+                          label: const Text('Continue with Microsoft'),
+                          style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white,
-                            minimumSize: const Size(double.infinity, 56),
+                            side: BorderSide(color: Colors.white.withValues(alpha: 0.4)),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            elevation: 0,
                           ),
                         ),
                       ),
 
+                      const SizedBox(height: 20),
                       const Text(
-                        'Secure authentication powered by Microsoft Entra',
-                        style: TextStyle(color: Colors.white60, fontSize: 12),
+                        'Your data stays secure',
+                        style: TextStyle(color: Colors.white38, fontSize: 11),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -193,6 +336,48 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool obscure = false,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscure,
+      keyboardType: keyboardType,
+      validator: validator,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white60),
+        prefixIcon: Icon(icon, color: Colors.white54, size: 20),
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.08),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.cyan),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        errorStyle: const TextStyle(color: Colors.orangeAccent),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
   }
