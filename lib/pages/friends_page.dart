@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/friend.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({super.key});
@@ -634,6 +635,9 @@ class _AddFriendsViewState extends State<_AddFriendsView> {
 
   Future<void> _sendFriendRequest(User user) async {
     try {
+      // Make sure our own user record exists before sending friend requests
+      await AuthService.ensureUserExists();
+
       await ApiService.sendFriendRequest(user.id);
       widget.onRequestSent();
 
@@ -668,7 +672,8 @@ class _AddFriendsViewState extends State<_AddFriendsView> {
             backgroundColor = Colors.red;
           }
         } else {
-          errorMessage = 'Failed to send friend request. Please try again.';
+          // Show the real error so it's diagnosable
+          errorMessage = 'Friend request failed: ${e.toString()}';
           backgroundColor = Colors.red;
         }
 

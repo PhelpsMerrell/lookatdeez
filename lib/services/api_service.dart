@@ -228,24 +228,26 @@ class ApiService {
       return FriendRequest.fromJson(json.decode(response.body));
     } else if (response.statusCode == 401) {
       throw Exception('Authentication required. Please log in again.');
-    } else if (response.statusCode == 400) {
-      String errorMessage = 'Bad request';
+    } else {
+      // Parse JSON error body from any non-success status
+      String errorMessage = 'Unknown error';
       try {
         final errorBody = response.body;
-        if (errorBody.isNotEmpty) {
-          if (errorBody.startsWith('{')) {
-            final errorJson = json.decode(errorBody);
-            errorMessage = errorJson['error'] ?? errorBody;
-          } else {
-            errorMessage = errorBody;
-          }
+        if (errorBody.isNotEmpty && errorBody.startsWith('{')) {
+          final errorJson = json.decode(errorBody);
+          errorMessage = errorJson['error'] ?? errorBody;
+        } else if (errorBody.isNotEmpty) {
+          errorMessage = errorBody;
         }
       } catch (_) {
         errorMessage = response.body.isNotEmpty ? response.body : 'Unknown error';
       }
-      throw FriendRequestException(errorMessage);
-    } else {
-      throw Exception('Failed to send friend request: ${response.statusCode} - ${response.body}');
+
+      // Use FriendRequestException for 400s so the UI can match known messages
+      if (response.statusCode == 400) {
+        throw FriendRequestException(errorMessage);
+      }
+      throw Exception('Friend request failed (${response.statusCode}): $errorMessage');
     }
   }
 

@@ -78,8 +78,8 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
             TextField(
               controller: titleController,
               decoration: const InputDecoration(
-                labelText: 'Title',
-                hintText: 'Enter video title',
+                labelText: 'Title (optional)',
+                hintText: 'Enter video title or leave blank',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -140,22 +140,21 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
       ),
     );
 
-    if (result != null &&
-        result['title']!.isNotEmpty &&
-        result['url']!.isNotEmpty) {
+    if (result != null && result['url']!.isNotEmpty) {
+      final title = result['title']!.isNotEmpty ? result['title']! : 'Untitled Item';
       
       setState(() => isLoading = true);
       
       try {
         print('=== About to call API addItemToPlaylist ===');
         print('Using playlist ID: "${playlist.id}"');
-        print('Title: "${result['title']!}"');
+        print('Title: "$title"');
         print('URL: "${result['url']!}"');
         
         // Call your actual API to add the item
         final newVideo = await ApiService.addItemToPlaylist(
           playlist.id,
-          result['title']!,
+          title,
           result['url']!,
         );
 
@@ -473,9 +472,10 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
                             final video = playlist.videos[index];
                             return Container(
                               key: ValueKey(video.id),
-                              margin: const EdgeInsets.only(bottom: 12),
+                              margin: const EdgeInsets.only(bottom: 8),
                               child: VideoCard(
                                 video: video,
+                                index: index,
                                 onDelete: () => _deleteVideo(index),
                               ),
                             );
