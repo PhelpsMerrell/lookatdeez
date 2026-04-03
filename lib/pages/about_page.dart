@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/glass_theme.dart';
 import '../widgets/video_terms_dialog.dart';
 
 class AboutPage extends StatelessWidget {
@@ -7,203 +8,130 @@ class AboutPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('About'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // App Info Card
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      body: Container(
+        decoration: AppTheme.scaffoldGradient,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Nav bar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.playlist_play,
-                          size: 32,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.arrow_back_ios, color: Colors.white.withOpacity(0.8), size: 20),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'About',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(width: 48),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // App info
+                      GlassCard(
+                        radius: AppTheme.radiusMd,
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'LookatDeez',
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                            Row(
+                              children: [
+                                Icon(Icons.playlist_play, size: 28, color: Colors.cyan.withOpacity(0.9)),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('LookatDeez', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                                    Text('Version 1.0.0', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13)),
+                                  ],
+                                ),
+                              ],
                             ),
+                            const SizedBox(height: 16),
                             Text(
-                              'Version 1.0.0',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey[600],
-                              ),
+                              'Create and share video playlists from multiple platforms.',
+                              style: TextStyle(color: Colors.white.withOpacity(0.6), height: 1.4),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Create and share video playlists from multiple platforms. Enjoy videos from YouTube, Instagram, TikTok, Vimeo, and more in one place.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Legal & Terms Section
-            Text(
-              'Legal & Terms',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            
-            Card(
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.info_outline),
-                    title: const Text('Video Content Terms'),
-                    subtitle: const Text('How we handle video content and platform policies'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => VideoTermsDialog.show(context),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.policy_outlined),
-                    title: const Text('Platform Policies'),
-                    subtitle: const Text('Links to video platform terms of service'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => const PlatformPoliciesDialog(),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Supported Platforms
-            Text(
-              'Supported Platforms',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _buildPlatformRow('📺', 'YouTube', 'Full player support'),
-                    _buildPlatformRow('🎬', 'Vimeo', 'Full player support'),
-                    _buildPlatformRow('🎥', 'Direct Videos', 'MP4, MOV, WebM files'),
-                    const Divider(),
-                    _buildPlatformRow('📷', 'Instagram', 'Embed support'),
-                    _buildPlatformRow('🎵', 'TikTok', 'Embed support'),
-                    _buildPlatformRow('🎮', 'Twitch', 'Clips only'),
-                    const Divider(),
-                    _buildPlatformRow('🐦', 'Twitter/X', 'External link only'),
-                    _buildPlatformRow('❓', 'Other', 'External link fallback'),
-                  ],
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 32),
-            
-            // Disclaimer
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceVariant,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.balance,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        size: 20,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Legal Disclaimer',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      const SizedBox(height: 24),
+                      Text('Legal & Terms', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.7))),
+                      const SizedBox(height: 12),
+                      GlassCard(
+                        radius: AppTheme.radiusMd,
+                        child: Column(
+                          children: [
+                            _aboutTile(Icons.info_outline, 'Video Content Terms', () => VideoTermsDialog.show(context)),
+                            Divider(height: 1, color: Colors.white.withOpacity(0.06)),
+                            _aboutTile(Icons.policy_outlined, 'Platform Policies', () {
+                              showDialog(context: context, builder: (_) => const PlatformPoliciesDialog());
+                            }),
+                          ],
                         ),
                       ),
+                      const SizedBox(height: 24),
+                      Text('Supported Platforms', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white.withOpacity(0.7))),
+                      const SizedBox(height: 12),
+                      GlassCard(
+                        radius: AppTheme.radiusMd,
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            _platformRow('YouTube', 'Full player support'),
+                            _platformRow('Vimeo', 'Full player support'),
+                            _platformRow('Direct Videos', 'MP4, MOV, WebM'),
+                            Divider(height: 16, color: Colors.white.withOpacity(0.06)),
+                            _platformRow('Instagram', 'Embed support'),
+                            _platformRow('TikTok', 'Embed support'),
+                            _platformRow('Twitch', 'Clips only'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'This app provides a convenient interface for viewing videos from various platforms using their official embedding methods. We do not host, store, or redistribute any video content. All videos remain on their original platforms and are subject to those platforms\' terms of service.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
-  
-  Widget _buildPlatformRow(String emoji, String name, String description) {
+
+  Widget _aboutTile(IconData icon, String title, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.white.withOpacity(0.5), size: 20),
+      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 14)),
+      trailing: Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.3), size: 18),
+      onTap: onTap,
+    );
+  }
+
+  Widget _platformRow(String name, String desc) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 20)),
-          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
-                ),
+                Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14)),
+                Text(desc, style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12)),
               ],
             ),
           ),

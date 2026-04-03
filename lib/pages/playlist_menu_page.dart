@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/playlist.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
-import '../widgets/main_app_bar.dart';
-import '../widgets/playlist_card.dart';
+import '../theme/glass_theme.dart';
 import 'friends_page.dart';
 import 'login_page.dart';
 import 'playlist_editor_page.dart';
@@ -49,23 +48,36 @@ class _PlaylistMenuPageState extends State<PlaylistMenuPage> {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Create New Playlist'),
+        backgroundColor: const Color(0xFF1E1E2E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        ),
+        title: const Text('New Playlist', style: TextStyle(color: Colors.white)),
         content: TextField(
           controller: nameController,
-          decoration: const InputDecoration(
-            labelText: 'Playlist Name',
-            hintText: 'Enter playlist name',
-          ),
           autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: 'Playlist Name',
+            labelStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              borderSide: const BorderSide(color: Colors.cyan),
+            ),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(color: Colors.white.withOpacity(0.6))),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(nameController.text),
-            child: const Text('Create'),
+            child: const Text('Create', style: TextStyle(color: Colors.cyan)),
           ),
         ],
       ),
@@ -74,31 +86,8 @@ class _PlaylistMenuPageState extends State<PlaylistMenuPage> {
     if (result != null && result.isNotEmpty) {
       try {
         final newPlaylist = await ApiService.createPlaylist(result);
-        setState(() {
-          playlists.add(newPlaylist);
-        });
-        // Navigate to the new playlist
-        if (mounted) {
-          Navigator.push(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) =>
-                  PlaylistEditorPage(
-                playlist: newPlaylist,
-                onPlaylistUpdated: (updatedPlaylist) {
-                  setState(() {
-                    final index = playlists.indexWhere(
-                        (p) => p.id == updatedPlaylist.id);
-                    if (index != -1) {
-                      playlists[index] = updatedPlaylist;
-                    }
-                  });
-                },
-              ),
-              transitionDuration: const Duration(milliseconds: 300),
-            ),
-          );
-        }
+        setState(() => playlists.add(newPlaylist));
+        if (mounted) _navigateToPlaylist(newPlaylist);
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -112,170 +101,100 @@ class _PlaylistMenuPageState extends State<PlaylistMenuPage> {
   void _navigateToPlaylist(Playlist playlist) {
     Navigator.push(
       context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            PlaylistEditorPage(
+      MaterialPageRoute(
+        builder: (_) => PlaylistEditorPage(
           playlist: playlist,
-          onPlaylistUpdated: (updatedPlaylist) {
+          onPlaylistUpdated: (updated) {
             setState(() {
-              final index = playlists.indexWhere(
-                  (p) => p.id == updatedPlaylist.id);
-              if (index != -1) {
-                playlists[index] = updatedPlaylist;
-              }
+              final i = playlists.indexWhere((p) => p.id == updated.id);
+              if (i != -1) playlists[i] = updated;
             });
           },
         ),
-        transitionDuration: const Duration(milliseconds: 300),
       ),
-    );
+    ).then((_) => loadPlaylists());
   }
 
   Future<void> _deletePlaylist(int index) async {
     final playlist = playlists[index];
-    try {
-      await ApiService.deletePlaylist(playlist.id);
-      setState(() {
-        playlists.removeAt(index);
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting playlist: $e')),
-        );
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E2E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        ),
+        title: const Text('Delete Playlist', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Delete "${playlist.name}"? This cannot be undone.',
+          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: Colors.white.withOpacity(0.6))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await ApiService.deletePlaylist(playlist.id);
+        setState(() => playlists.removeAt(index));
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error deleting playlist: $e')),
+          );
+        }
       }
+    }
+  }
+
+  void _openPlayMode(Playlist playlist) {
+    if (playlist.videos.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PlaylistEditorPage(
+            playlist: playlist,
+            onPlaylistUpdated: (updated) {
+              setState(() {
+                final i = playlists.indexWhere((p) => p.id == updated.id);
+                if (i != -1) playlists[i] = updated;
+              });
+            },
+            startInPlayMode: true,
+          ),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: MainAppBar(
-    title: 'Video Playlists',
-    onOpenProfile: () => Navigator.push(
-      context, MaterialPageRoute(builder: (_) => const ProfilePage())),
-    onOpenFriends: () => Navigator.push(
-      context, MaterialPageRoute(builder: (_) => const FriendsPage())),
-    onSignOut: _signOut, // your function
-  ),
-
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Theme.of(context).colorScheme.primaryContainer,
-              Theme.of(context).colorScheme.surface,
-            ],
-          ),
-        ),
+        decoration: AppTheme.scaffoldGradient,
         child: SafeArea(
           child: Column(
             children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.video_library_outlined,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Video Playlists',
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Manage your TikToks, Reels & Shorts',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Create button
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton.icon(
-                    onPressed: createNewPlaylist,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    icon: const Icon(Icons.add_circle_outline, size: 24),
-                    label: const Text(
-                      'Create New Playlist',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Playlists Grid
+              // Toolbar
+              _buildToolbar(),
+              // Content
               Expanded(
                 child: isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : playlists.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.playlist_add_outlined,
-                                  size: 80,
-                                  color: Theme.of(context).colorScheme.outline,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No playlists yet',
-                                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                    color: Theme.of(context).colorScheme.outline,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Create your first playlist to get started',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Theme.of(context).colorScheme.outline,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                            child: GridView.builder(
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                childAspectRatio: 1.2,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                              ),
-                              itemCount: playlists.length,
-                              itemBuilder: (context, index) {
-                                final playlist = playlists[index];
-                                return PlaylistCard(
-                                  playlist: playlist,
-                                  onTap: () => _navigateToPlaylist(playlist),
-                                  onDelete: () => _deletePlaylist(index),
-                                );
-                              },
-                            ),
-                          ),
+                    ? const Center(child: CircularProgressIndicator(color: Colors.cyan))
+                    : RefreshIndicator(
+                        onRefresh: loadPlaylists,
+                        color: Colors.cyan,
+                        child: _buildPlaylistList(),
+                      ),
               ),
             ],
           ),
@@ -284,24 +203,217 @@ class _PlaylistMenuPageState extends State<PlaylistMenuPage> {
     );
   }
 
-void _signOut() async {
-  try {
-    // Call the auth service logout which clears tokens and redirects to Microsoft logout
-    await AuthService.logout();
-    
-    // The logout method will redirect to Microsoft's logout page and then back to our app
-    // so we don't need to navigate manually here
-  } catch (e) {
-    print('Sign out error: $e');
-    
-    // If there's an error, still try to navigate to login page
-    if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-        (route) => false,
-      );
+  Widget _buildToolbar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          const Spacer(),
+          Text(
+            'Look at Deez',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const Spacer(),
+          PopupMenuButton<String>(
+            icon: Icon(Icons.person_outline, color: Colors.white.withOpacity(0.8)),
+            color: const Color(0xFF252536),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            onSelected: (value) {
+              switch (value) {
+                case 'profile':
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage()));
+                case 'friends':
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const FriendsPage()));
+                case 'signout':
+                  _signOut();
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'profile', child: _MenuRow(icon: Icons.account_circle_outlined, label: 'Profile')),
+              PopupMenuItem(value: 'friends', child: _MenuRow(icon: Icons.group_outlined, label: 'Friends')),
+              PopupMenuItem(value: 'signout', child: _MenuRow(icon: Icons.logout, label: 'Sign out')),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlaylistList() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: playlists.length + 1, // +1 for the add button row
+      itemBuilder: (context, index) {
+        // First row: Add button
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _AddPlaylistRow(onTap: createNewPlaylist),
+          );
+        }
+
+        final playlistIndex = index - 1;
+        final playlist = playlists[playlistIndex];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _PlaylistMenuRow(
+            playlist: playlist,
+            onTap: () => _navigateToPlaylist(playlist),
+            onPlay: () => _openPlayMode(playlist),
+            onDelete: () => _deletePlaylist(playlistIndex),
+          ),
+        );
+      },
+    );
+  }
+
+  void _signOut() async {
+    try {
+      await AuthService.logout();
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (route) => false,
+        );
+      }
     }
   }
 }
 
+// ── Menu popup row ──
+class _MenuRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _MenuRow({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white70, size: 20),
+        const SizedBox(width: 12),
+        Text(label, style: const TextStyle(color: Colors.white)),
+      ],
+    );
+  }
+}
+
+// ── Add playlist row (matches iOS "+" button) ──
+class _AddPlaylistRow extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AddPlaylistRow({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: GlassCard(
+        radius: AppTheme.radiusSm,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Center(
+          child: Icon(
+            Icons.add,
+            color: Colors.white.withOpacity(0.5),
+            size: 22,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Playlist row (matches iOS PlaylistMenuRow) ──
+class _PlaylistMenuRow extends StatelessWidget {
+  final Playlist playlist;
+  final VoidCallback onTap;
+  final VoidCallback onPlay;
+  final VoidCallback onDelete;
+
+  const _PlaylistMenuRow({
+    required this.playlist,
+    required this.onTap,
+    required this.onPlay,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: GlassCard(
+        radius: AppTheme.radiusMd,
+        child: Row(
+          children: [
+            // Left: text content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      playlist.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.layers_outlined,
+                            size: 13, color: Colors.white.withOpacity(0.45)),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${playlist.videos.length}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.45),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Right: play button
+            GestureDetector(
+              onTap: playlist.videos.isNotEmpty ? onPlay : null,
+              child: Container(
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.06),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.08),
+                    width: 0.5,
+                  ),
+                ),
+                child: Icon(
+                  Icons.play_arrow_rounded,
+                  size: 20,
+                  color: playlist.videos.isNotEmpty
+                      ? Colors.white.withOpacity(0.7)
+                      : Colors.white.withOpacity(0.15),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

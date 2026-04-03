@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../theme/glass_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -28,16 +29,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
     try {
       final profile = await ApiService.getCurrentUserProfile();
-
       setState(() {
         userProfile = profile;
         isLoading = false;
-        errorMessage = null;
       });
     } catch (e) {
-      print('Profile API error: $e');
-
-      // Fallback to local data if API fails — using the correct keys
       try {
         final prefs = await SharedPreferences.getInstance();
         final fallbackProfile = {
@@ -46,14 +42,12 @@ class _ProfilePageState extends State<ProfilePage> {
           'id': prefs.getString('microsoftUserId') ?? 'unknown',
           'createdAt': DateTime.now().toIso8601String(),
         };
-
         setState(() {
           userProfile = fallbackProfile;
           isLoading = false;
-          errorMessage = 'Using offline data — backend may be unavailable';
+          errorMessage = 'Using offline data';
         });
       } catch (fallbackError) {
-        print('Fallback error: $fallbackError');
         setState(() {
           userProfile = null;
           isLoading = false;
@@ -63,149 +57,169 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  String _getDisplayName() =>
+      userProfile?['displayName']?.toString() ??
+      userProfile?['DisplayName']?.toString() ??
+      'Unknown User';
+
+  String _getEmail() =>
+      userProfile?['email']?.toString() ??
+      userProfile?['Email']?.toString() ??
+      'unknown@example.com';
+
+  String _getUserId() =>
+      userProfile?['id']?.toString() ??
+      userProfile?['Id']?.toString() ??
+      'unknown';
+
+  DateTime? _getCreatedAt() {
+    final str = (userProfile?['createdAt'] ?? userProfile?['CreatedAt'])?.toString();
+    return str != null ? DateTime.tryParse(str) : null;
+  }
+
+  String _formatDate(DateTime date) => '${date.day}/${date.month}/${date.year}';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: loadUserProfile,
-          ),
-        ],
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : userProfile == null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                      const SizedBox(height: 16),
-                      Text(errorMessage ?? 'Failed to load profile'),
-                      const SizedBox(height: 8),
-                      ElevatedButton(
-                        onPressed: loadUserProfile,
-                        child: const Text('Retry'),
+      body: Container(
+        decoration: AppTheme.scaffoldGradient,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Nav bar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.arrow_back_ios, color: Colors.white.withOpacity(0.8), size: 20),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'Profile',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
                       ),
-                    ],
-                  ),
-                )
-              : Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      if (errorMessage != null) ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.orange.shade300),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.warning, color: Colors.orange.shade700, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  errorMessage!,
-                                  style: TextStyle(color: Colors.orange.shade700),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircleAvatar(
-                              radius: 36,
-                              backgroundColor: Theme.of(context).colorScheme.primary,
-                              child: Text(
-                                _getDisplayName().isNotEmpty
-                                    ? _getDisplayName()[0].toUpperCase()
-                                    : '?',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.onPrimary,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              _getDisplayName(),
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _getEmail(),
-                              style: const TextStyle(color: Colors.grey),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'User ID: ${_getUserId()}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            if (_getCreatedAt() != null)
-                              Text(
-                                'Member since: ${_formatDate(_getCreatedAt()!)}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    IconButton(
+                      onPressed: loadUserProfile,
+                      icon: Icon(Icons.refresh, color: Colors.white.withOpacity(0.8), size: 20),
+                    ),
+                  ],
                 ),
+              ),
+              // Content
+              Expanded(
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Colors.cyan))
+                    : userProfile == null
+                        ? _buildError()
+                        : _buildProfile(),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  String _getDisplayName() {
-    // Handle both camelCase and PascalCase from backend
-    return userProfile?['displayName']?.toString()
-        ?? userProfile?['DisplayName']?.toString()
-        ?? 'Unknown User';
+  Widget _buildError() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 64, color: Colors.red.withOpacity(0.7)),
+          const SizedBox(height: 16),
+          Text(errorMessage ?? 'Failed to load', style: TextStyle(color: Colors.white.withOpacity(0.6))),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: loadUserProfile,
+            child: const Text('Retry', style: TextStyle(color: Colors.cyan)),
+          ),
+        ],
+      ),
+    );
   }
 
-  String _getEmail() {
-    return userProfile?['email']?.toString()
-        ?? userProfile?['Email']?.toString()
-        ?? 'unknown@example.com';
+  Widget _buildProfile() {
+    final name = _getDisplayName();
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          if (errorMessage != null) ...[
+            GlassCard(
+              radius: AppTheme.radiusSm,
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber, color: Colors.orange.withOpacity(0.8), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(errorMessage!,
+                        style: TextStyle(color: Colors.orange.withOpacity(0.8), fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+          // Avatar
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: Colors.cyan.withOpacity(0.2),
+            child: Text(
+              name.isNotEmpty ? name[0].toUpperCase() : '?',
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.cyan),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            name,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _getEmail(),
+            style: TextStyle(color: Colors.white.withOpacity(0.5)),
+          ),
+          const SizedBox(height: 24),
+          // Details card
+          GlassCard(
+            radius: AppTheme.radiusMd,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _detailRow('User ID', _getUserId()),
+                if (_getCreatedAt() != null)
+                  _detailRow('Member since', _formatDate(_getCreatedAt()!)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  String _getUserId() {
-    return userProfile?['id']?.toString()
-        ?? userProfile?['Id']?.toString()
-        ?? 'unknown';
-  }
-
-  DateTime? _getCreatedAt() {
-    final createdAtStr = (userProfile?['createdAt'] ?? userProfile?['CreatedAt'])?.toString();
-    if (createdAtStr != null) {
-      return DateTime.tryParse(createdAtStr);
-    }
-    return null;
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Text(label, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13)),
+          const Spacer(),
+          Flexible(
+            child: Text(
+              value,
+              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

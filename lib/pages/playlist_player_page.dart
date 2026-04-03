@@ -2,18 +2,19 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/playlist.dart';
-import '../models/video_item.dart';
 import '../services/video_url_parser.dart';
+import '../theme/glass_theme.dart';
 import '../widgets/video_player_widget.dart';
-import '../widgets/video_terms_dialog.dart';
 import '../widgets/video_debug_widget.dart';
 
 class PlaylistPlayerPage extends StatefulWidget {
   final Playlist playlist;
+  final int startIndex;
 
   const PlaylistPlayerPage({
     super.key,
     required this.playlist,
+    this.startIndex = 0,
   });
 
   @override
@@ -21,15 +22,18 @@ class PlaylistPlayerPage extends StatefulWidget {
 }
 
 class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
-  int currentIndex = 0;
-  PageController pageController = PageController();
-  bool isLoading = false;
-  List<ParsedVideo> parsedVideos = [];
+  late int currentIndex;
+  late PageController pageController;
+  late List<ParsedVideo> parsedVideos;
 
   @override
   void initState() {
     super.initState();
-    _parseAllVideos();
+    currentIndex = widget.startIndex.clamp(0, widget.playlist.videos.length - 1);
+    pageController = PageController(initialPage: currentIndex);
+    parsedVideos = widget.playlist.videos
+        .map((v) => VideoUrlParser.parseUrl(v.url))
+        .toList();
   }
 
   @override
@@ -38,64 +42,18 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
     super.dispose();
   }
 
-  void _parseAllVideos() {
-    parsedVideos = widget.playlist.videos
-        .map((video) => VideoUrlParser.parseUrl(video.url))
-        .toList();
-  }
+  bool get hasNext => currentIndex < widget.playlist.videos.length - 1;
+  bool get hasPrev => currentIndex > 0;
 
-  VideoItem get currentVideo => widget.playlist.videos[currentIndex];
-  ParsedVideo get currentParsedVideo => parsedVideos[currentIndex];
-  bool get hasNextVideo => currentIndex < widget.playlist.videos.length - 1;
-  bool get hasPreviousVideo => currentIndex > 0;
-
-  void goToNext() {
-    if (hasNextVideo) {
-      setState(() => currentIndex++);
-      pageController.nextPage(
+  void _step(int delta) {
+    if (widget.playlist.videos.isEmpty) return;
+    final next = (currentIndex + delta).clamp(0, widget.playlist.videos.length - 1);
+    if (next != currentIndex) {
+      pageController.animateToPage(
+        next,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
-    }
-  }
-
-  void goToPrevious() {
-    if (hasPreviousVideo) {
-      setState(() => currentIndex--);
-      pageController.previousPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
-  Future<void> openVideoUrl() async {
-    setState(() => isLoading = true);
-    try {
-      final uri = Uri.parse(currentVideo.url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Could not open: ${currentVideo.url}'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Invalid URL: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      setState(() => isLoading = false);
     }
   }
 
@@ -103,20 +61,14 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
   Widget build(BuildContext context) {
     if (widget.playlist.videos.isEmpty) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.playlist.name),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        body: const Center(
+        backgroundColor: Colors.black,
+        body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.video_call_outlined, size: 80, color: Colors.grey),
-              SizedBox(height: 16),
-              Text('No videos to play', style: TextStyle(fontSize: 18)),
+              Icon(Icons.video_library_outlined, size: 64, color: Colors.white.withOpacity(0.2)),
+              const SizedBox(height: 16),
+              Text('No videos to play', style: TextStyle(color: Colors.white.withOpacity(0.5))),
             ],
           ),
         ),
@@ -125,209 +77,142 @@ class _PlaylistPlayerPageState extends State<PlaylistPlayerPage> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Top Bar ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
+      body: Stack(
+        children: [
+          // ── Vertical paging player (matches iOS ScrollView + paging) ──
+          PageView.builder(
+            controller: pageController,
+            scrollDirection: Axis.vertical,
+            onPageChanged: (index) => setState(() => currentIndex = index),
+            itemCount: widget.playlist.videos.length,
+            itemBuilder: (context, index) {
+              final video = widget.playlist.videos[index];
+              final parsed = parsedVideos[index];
+
+              return Column(
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-                  ),
-                  const SizedBox(width: 4),
+                  if (kDebugMode)
+                    VideoDebugWidget(url: video.url, parsedVideo: parsed),
                   Expanded(
-                    child: Text(
-                      widget.playlist.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => VideoTermsDialog.show(context),
-                    icon: const Icon(Icons.info_outline, color: Colors.white70, size: 20),
-                  ),
-                  IconButton(
-                    onPressed: isLoading ? null : openVideoUrl,
-                    icon: Icon(
-                      Icons.open_in_new,
-                      color: isLoading ? Colors.white30 : Colors.white70,
-                      size: 20,
+                    child: VideoPlayerWidget(
+                      parsedVideo: parsed,
+                      title: video.title,
                     ),
                   ),
                 ],
-              ),
+              );
+            },
+          ),
+
+          // ── Floating glass toolbar (matches iOS PlayAllToolbar) ──
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: MediaQuery.of(context).padding.bottom + 8,
+            child: _PlayAllToolbar(
+              currentIndex: currentIndex,
+              totalCount: widget.playlist.videos.length,
+              onDismiss: () => Navigator.pop(context),
+              onPrev: () => _step(-1),
+              onNext: () => _step(1),
+              hasPrev: hasPrev,
+              hasNext: hasNext,
             ),
-
-            // ── Video Title + Platform ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Text(
-                    VideoUrlParser.getPlatformIcon(currentParsedVideo.platform),
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      currentVideo.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${currentIndex + 1} / ${widget.playlist.videos.length}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // ── Main Video Player Area (swipeable) ──
-            Expanded(
-              child: PageView.builder(
-                controller: pageController,
-                onPageChanged: (index) {
-                  setState(() => currentIndex = index);
-                },
-                itemCount: widget.playlist.videos.length,
-                itemBuilder: (context, index) {
-                  final video = widget.playlist.videos[index];
-                  final parsedVideo = parsedVideos[index];
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      children: [
-                        // Debug info (only in debug builds)
-                        if (kDebugMode)
-                          VideoDebugWidget(
-                            url: video.url,
-                            parsedVideo: parsedVideo,
-                          ),
-
-                        // Video Player — takes all available space
-                        Expanded(
-                          child: VideoPlayerWidget(
-                            parsedVideo: parsedVideo,
-                            title: video.title,
-                          ),
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // URL display (subtle)
-                        Text(
-                          video.url,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.3),
-                            fontSize: 10,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── Bottom Navigation Controls ──
-            Padding(
-              padding: const EdgeInsets.only(left: 20, right: 20, bottom: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Previous
-                  _NavButton(
-                    icon: Icons.skip_previous_rounded,
-                    enabled: hasPreviousVideo,
-                    onPressed: goToPrevious,
-                  ),
-
-                  // Open in app button
-                  TextButton.icon(
-                    onPressed: isLoading ? null : openVideoUrl,
-                    icon: Icon(
-                      Icons.open_in_new,
-                      size: 16,
-                      color: isLoading ? Colors.white30 : Colors.white60,
-                    ),
-                    label: Text(
-                      'Open in ${VideoUrlParser.getPlatformName(currentParsedVideo.platform)}',
-                      style: TextStyle(
-                        color: isLoading ? Colors.white30 : Colors.white60,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-
-                  // Next
-                  _NavButton(
-                    icon: Icons.skip_next_rounded,
-                    enabled: hasNextVideo,
-                    onPressed: goToNext,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _NavButton extends StatelessWidget {
-  final IconData icon;
-  final bool enabled;
-  final VoidCallback onPressed;
+/// Floating glass toolbar matching the iOS PlayAllToolbar.
+class _PlayAllToolbar extends StatelessWidget {
+  final int currentIndex;
+  final int totalCount;
+  final VoidCallback onDismiss;
+  final VoidCallback onPrev;
+  final VoidCallback onNext;
+  final bool hasPrev;
+  final bool hasNext;
 
-  const _NavButton({
-    required this.icon,
-    required this.enabled,
-    required this.onPressed,
+  const _PlayAllToolbar({
+    required this.currentIndex,
+    required this.totalCount,
+    required this.onDismiss,
+    required this.onPrev,
+    required this.onNext,
+    required this.hasPrev,
+    required this.hasNext,
   });
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: enabled ? onPressed : null,
-      icon: Icon(icon, size: 36),
-      style: IconButton.styleFrom(
-        backgroundColor: enabled ? Colors.white.withOpacity(0.1) : Colors.transparent,
-        foregroundColor: enabled ? Colors.white : Colors.white.withOpacity(0.2),
-        padding: const EdgeInsets.all(12),
+    return GlassCard(
+      radius: AppTheme.radiusXl,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          // Close button
+          _toolbarButton(
+            icon: Icons.close,
+            onTap: onDismiss,
+          ),
+
+          const Spacer(),
+
+          // Navigation capsule
+          GlassCard(
+            radius: 20,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _toolbarButton(
+                  icon: Icons.keyboard_arrow_up,
+                  onTap: hasPrev ? onPrev : null,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  '${currentIndex + 1} / $totalCount',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _toolbarButton(
+                  icon: Icons.keyboard_arrow_down,
+                  onTap: hasNext ? onNext : null,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
+
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _toolbarButton({
+    required IconData icon,
+    VoidCallback? onTap,
+    double size = 16,
+  }) {
+    final enabled = onTap != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: Icon(
+          icon,
+          size: size,
+          color: Colors.white.withOpacity(enabled ? 0.85 : 0.2),
+        ),
       ),
     );
   }

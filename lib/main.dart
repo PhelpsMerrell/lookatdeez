@@ -3,6 +3,7 @@ import 'pages/login_page.dart';
 import 'pages/auth_callback_page.dart';
 import 'pages/playlist_menu_page.dart';
 import 'services/auth_service.dart';
+import 'theme/glass_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,16 +22,11 @@ class PlaylistApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // If the browser landed on /auth/callback, go straight there.
-    // Otherwise use the normal AuthGate flow.
     final isCallback = Uri.base.path == '/auth/callback';
 
     return MaterialApp(
       title: 'Look at Deez',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.darkTheme,
       home: isCallback ? const AuthCallbackPage() : const AuthGate(),
       routes: {
         '/login': (context) => const LoginPage(),
@@ -59,9 +55,7 @@ class _AuthGateState extends State<AuthGate> {
 
   Future<void> _checkAuthState() async {
     try {
-      print('AuthGate: Checking authentication state...');
       final isLoggedIn = await AuthService.isLoggedIn();
-      print('AuthGate: User is logged in: $isLoggedIn');
 
       if (isLoggedIn && mounted) {
         Navigator.pushReplacement(
@@ -84,17 +78,7 @@ class _AuthGateState extends State<AuthGate> {
     if (_isLoading) {
       return Scaffold(
         body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF0F172A),
-                Color(0xFF1E3A8A),
-                Color(0xFF312E81),
-              ],
-            ),
-          ),
+          decoration: AppTheme.scaffoldGradient,
           child: const Center(
             child: CircularProgressIndicator(color: Colors.cyan),
           ),
