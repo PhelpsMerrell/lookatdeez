@@ -232,25 +232,16 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
             children: [
               Column(
                 children: [
-                  // ── Nav bar ──
                   _buildNavBar(),
-
-                  // ── Sticky play button (matches iOS stickyPlayButton) ──
                   _buildStickyPlayButton(),
-
-                  // ── Items list ──
                   Expanded(
                     child: playlist.videos.isEmpty
                         ? _buildEmptyState()
                         : _buildItemsList(),
                   ),
-
-                  // ── Sticky add button (matches iOS stickyAddButton) ──
                   _buildStickyAddButton(),
                 ],
               ),
-
-              // Loading overlay
               if (isLoading)
                 Container(
                   color: Colors.black.withOpacity(0.4),
@@ -386,8 +377,8 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
         return _PlaylistItemRow(
           key: ValueKey(video.id),
           video: video,
+          index: index,
           onTap: () {
-            // Tap to play from this index
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -408,12 +399,14 @@ class _PlaylistEditorPageState extends State<PlaylistEditorPage> {
 // ── Item row (matches iOS PlaylistItemCard) ──
 class _PlaylistItemRow extends StatelessWidget {
   final VideoItem video;
+  final int index;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
   const _PlaylistItemRow({
     super.key,
     required this.video,
+    required this.index,
     required this.onTap,
     required this.onDelete,
   });
@@ -474,7 +467,7 @@ class _PlaylistItemRow extends StatelessWidget {
               const SizedBox(width: 8),
               // Drag handle
               ReorderableDragStartListener(
-                index: -1, // Will be overridden by parent
+                index: index,
                 child: Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: Icon(

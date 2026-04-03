@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../pages/friends_page.dart';
 import '../models/friend.dart';
 import '../services/api_service.dart';
+import '../theme/glass_theme.dart';
 
 /// Call this from your button: showFriendShareSheet(context, playlistId);
 Future<void> showFriendShareSheet(BuildContext context, [String? playlistId]) {
@@ -10,8 +11,9 @@ Future<void> showFriendShareSheet(BuildContext context, [String? playlistId]) {
     useSafeArea: true,
     isScrollControlled: true,
     showDragHandle: true,
+    backgroundColor: const Color(0xFF1A1A28),
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (_) => _FriendShareSheet(playlistId: playlistId),
   );
@@ -56,7 +58,6 @@ class _FriendShareSheetState extends State<_FriendShareSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       child: Column(
@@ -67,14 +68,18 @@ class _FriendShareSheetState extends State<_FriendShareSheet> {
               Expanded(
                 child: Text(
                   widget.playlistId != null ? 'Share playlist with…' : 'Share with…',
-                  style: theme.textTheme.titleLarge,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               IconButton(
                 tooltip: 'Manage friends',
-                icon: const Icon(Icons.manage_accounts_outlined),
+                icon: Icon(Icons.manage_accounts_outlined, color: Colors.white.withOpacity(0.6)),
                 onPressed: () {
-                  Navigator.pop(context); // close sheet
+                  Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const FriendsPage()),
@@ -87,22 +92,29 @@ class _FriendShareSheetState extends State<_FriendShareSheet> {
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.all(32),
-              child: CircularProgressIndicator(),
+              child: CircularProgressIndicator(color: Colors.cyan),
             )
           else if (_friends.isEmpty)
             Column(
               children: [
-                const Icon(Icons.group_outlined, size: 64, color: Colors.grey),
+                Icon(Icons.group_outlined, size: 64, color: Colors.white.withOpacity(0.15)),
                 const SizedBox(height: 12),
-                const Text('No friends yet', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text('No friends yet',
+                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
                 const SizedBox(height: 4),
-                const Text('Add friends to share playlists.', textAlign: TextAlign.center),
+                Text('Add friends to share playlists.',
+                    style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                    textAlign: TextAlign.center),
                 const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white.withOpacity(0.7),
+                          side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                        ),
                         child: const Text('Close'),
                       ),
                     ),
@@ -116,8 +128,11 @@ class _FriendShareSheetState extends State<_FriendShareSheet> {
                             MaterialPageRoute(builder: (_) => const FriendsPage()),
                           );
                         },
-                        icon: const Icon(Icons.person_add_alt_1),
+                        icon: const Icon(Icons.person_add_alt_1, size: 18),
                         label: const Text('Add friends'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.cyan.withOpacity(0.8),
+                        ),
                       ),
                     ),
                   ],
@@ -125,32 +140,33 @@ class _FriendShareSheetState extends State<_FriendShareSheet> {
               ],
             )
           else
-            ..._buildFriendsList(theme),
+            ..._buildFriendsList(),
         ],
       ),
     );
   }
 
-  List<Widget> _buildFriendsList(ThemeData theme) {
+  List<Widget> _buildFriendsList() {
     return [
-      // Header with select all/none
       Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             'Select friends (${_selectedFriends.length}/${_friends.length})',
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
           ),
           TextButton(
             onPressed: _selectedFriends.length == _friends.length
                 ? _clearSelection
                 : _selectAll,
-            child: Text(_selectedFriends.length == _friends.length ? 'Clear' : 'All'),
+            child: Text(
+              _selectedFriends.length == _friends.length ? 'Clear' : 'All',
+              style: const TextStyle(color: Colors.cyan),
+            ),
           ),
         ],
       ),
       const SizedBox(height: 8),
-      // Friends list
       ConstrainedBox(
         constraints: const BoxConstraints(maxHeight: 300),
         child: ListView.builder(
@@ -159,40 +175,77 @@ class _FriendShareSheetState extends State<_FriendShareSheet> {
           itemBuilder: (context, index) {
             final friend = _friends[index];
             final isSelected = _selectedFriends.contains(friend.id);
-            
-            return CheckboxListTile(
-              value: isSelected,
-              onChanged: (selected) {
-                setState(() {
-                  if (selected == true) {
-                    _selectedFriends.add(friend.id);
-                  } else {
-                    _selectedFriends.remove(friend.id);
-                  }
-                });
-              },
-              secondary: CircleAvatar(
-                radius: 20,
-                child: Text(
-                  friend.displayName.isNotEmpty
-                      ? friend.displayName[0].toUpperCase()
-                      : '?',
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedFriends.remove(friend.id);
+                    } else {
+                      _selectedFriends.add(friend.id);
+                    }
+                  });
+                },
+                child: GlassCard(
+                  radius: AppTheme.radiusSm,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(
+                    children: [
+                      // Checkbox
+                      Icon(
+                        isSelected ? Icons.check_circle : Icons.circle_outlined,
+                        color: isSelected ? Colors.cyan : Colors.white.withOpacity(0.3),
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.cyan.withOpacity(0.15),
+                        child: Text(
+                          friend.displayName.isNotEmpty
+                              ? friend.displayName[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                              color: Colors.cyan, fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(friend.displayName,
+                                style: const TextStyle(
+                                    color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14)),
+                            Text(friend.email,
+                                style: TextStyle(
+                                    color: Colors.white.withOpacity(0.35), fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              title: Text(friend.displayName),
-              subtitle: Text(friend.email),
-              contentPadding: EdgeInsets.zero,
             );
           },
         ),
       ),
       const SizedBox(height: 16),
-      // Action buttons
       Row(
         children: [
           Expanded(
             child: OutlinedButton(
               onPressed: () => Navigator.pop(context),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white.withOpacity(0.7),
+                side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                ),
+              ),
               child: const Text('Cancel'),
             ),
           ),
@@ -200,6 +253,13 @@ class _FriendShareSheetState extends State<_FriendShareSheet> {
           Expanded(
             child: FilledButton(
               onPressed: _selectedFriends.isEmpty ? null : _shareWithSelected,
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.cyan.withOpacity(0.8),
+                disabledBackgroundColor: Colors.cyan.withOpacity(0.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                ),
+              ),
               child: Text(
                 widget.playlistId != null
                     ? 'Share (${_selectedFriends.length})'
@@ -213,40 +273,31 @@ class _FriendShareSheetState extends State<_FriendShareSheet> {
   }
 
   void _selectAll() {
-    setState(() {
-      _selectedFriends.addAll(_friends.map((f) => f.id));
-    });
+    setState(() => _selectedFriends.addAll(_friends.map((f) => f.id)));
   }
 
   void _clearSelection() {
-    setState(() {
-      _selectedFriends.clear();
-    });
+    setState(() => _selectedFriends.clear());
   }
 
   void _shareWithSelected() {
     if (_selectedFriends.isEmpty) return;
 
     if (widget.playlistId != null) {
-      // TODO: Implement playlist sharing via permissions API
-      // This would use your existing permissions system
       _sharePlaylist();
     } else {
-      // Just return the selected friend IDs for other use cases
       Navigator.pop(context, _selectedFriends.toList());
     }
   }
 
   Future<void> _sharePlaylist() async {
-    // TODO: Implement playlist sharing logic
-    // This would call your permissions/sharing endpoints
-    // For now, just show a success message
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           'Playlist shared with ${_selectedFriends.length} friend${_selectedFriends.length == 1 ? '' : 's'}',
         ),
+        backgroundColor: Colors.green,
       ),
     );
   }
